@@ -173,8 +173,14 @@ import rasterio
 from rasterio.mask import mask
 from datetime import timedelta
 
+# Load credentials from JSON file
+service_account = 'krishizest-service@ee-sambiitk-imageprocessing.iam.gserviceaccount.com'
+key_file = 'ee-sambiitk-imageprocessing-17efb1479498.json'
+
+credentials = ee.ServiceAccountCredentials(service_account, key_file)
+
 # Initialize Earth Engine
-ee.Initialize(project="ee-sambiitk-imageprocessing")
+ee.Initialize(credentials)
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'  # For session handling

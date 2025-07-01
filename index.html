@@ -1,0 +1,353 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KrishiZest</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet-providers@1.13.0/leaflet-providers.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+    header { height: 60px; background-color: #003366; color: white; display: flex; align-items: center; padding: 0 20px; }
+    header img { height: 45px; }
+    header h2 { margin: 0 20px; }
+    header select { width: 120px; padding: 4px; margin-left: auto; }
+    #content { display: flex; height: calc(100% - 60px); width: 100%; }
+    #sidebar { width: 300px; background-color: #f8f8f8; padding: 15px; overflow-y: auto; transition: transform 0.3s ease; z-index: 1000; }
+    #sidebar.collapsed { transform: translateX(-300px); position: absolute; }
+    #map-container { flex: 1; position: relative; display: flex; flex-direction: column; }
+    #map { flex: 1; }
+    #toggleBtn { position: absolute; top: 10px; left: 10px; background-color: #003366; color: white; width: 32px; height: 32px; font-size: 18px; text-align: center; line-height: 32px; border: none; border-radius: 4px; z-index: 1100; cursor: pointer; }
+    #spinner { position: absolute; top: 50%; left: 50%; z-index: 1050; display: none; transform: translate(-50%, -50%); }
+    .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #003366; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #charts { height: 280px; padding: 10px; background-color: white; }
+    canvas { width: 100% !important; height: 260px !important; }
+    button, select, input[type="date"], input[type="file"], input[type="password"], input[type="text"] {
+      width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc;
+    }
+    button { background-color: #003366; color: white; cursor: pointer; }
+    button:hover { background-color: #00509e; }
+    .btn-green { background-color: #28a745; }
+    .btn-red { background-color: #dc3545; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/static/Powered%20by%20TerrAqua%20UAV%20(1).png" alt="MapZest Logo">
+    <h2>KrishiZest™ Platform</h2>
+    <select onchange="setLanguage(this.value)">
+      <option value="en">English</option>
+      <option value="hi">हिंदी</option>
+    </select>
+  </header>
+  <div id="content">
+    <div id="sidebar">
+      <h3>📅 Date Range</h3>
+      <label for="start">Start Date:</label>
+      <input type="date" id="start"/>
+      <label for="end">End Date:</label>
+      <input type="date" id="end"/>
+      <button onclick="fetchData()">🔍 Fetch Data</button>
+      <h3>🛠️ Display Layer</h3>
+      <label for="layer">Select Layer:</label>
+      <select id="layer" onchange="switchLayer()">
+        <option value="ndvi">NDVI</option>
+        <option value="kc">Kc</option>
+        <option value="etc">ETc</option>
+        <option value="iwr">IWR</option>
+        <option value="deltas">ΔS</option>
+      </select>
+      <h3>📁 Upload GeoTIFF</h3>
+      <input type="file" id="geotiffFile" accept=".tif,.tiff"/>
+      <button onclick="uploadGeoTIFF()">Upload & Clip</button>
+      <h3>🔍 Export</h3>
+      <button class="btn-green" onclick="exportChartAsImage()">📈 PNG Export</button>
+      <button class="btn-red" onclick="exportChartAsPDF()">📄 PDF Export</button>
+    </div>
+    <div id="map-container">
+      <button id="toggleBtn" onclick="toggleSidebar()">☰</button>
+      <div id="spinner"><div class="spinner"></div></div>
+      <div id="map"></div>
+      <div id="charts"><canvas id="timeseriesChart"></canvas></div>
+    </div>
+  </div>
+  <script>
+    const map = L.map('map', {
+      center: [26.51, 80.23],
+      zoom: 11,
+      layers: [L.tileLayer.provider('Esri.WorldImagery')]
+    });
+    const drawnItems = new L.FeatureGroup().addTo(map);
+    L.control.layers({
+      "OpenStreetMap": L.tileLayer.provider('OpenStreetMap'),
+      "Esri Imagery": L.tileLayer.provider('Esri.WorldImagery')
+    }).addTo(map);
+    const drawControl = new L.Control.Draw({
+      draw: { polygon: true, rectangle: true, marker: false, polyline: false, circle: false, circlemarker: false },
+      edit: { featureGroup: drawnItems }
+    });
+    map.addControl(drawControl);
+    let drawnAOI = null;
+    map.on(L.Draw.Event.CREATED, function (e) {
+      drawnItems.clearLayers();
+      drawnAOI = e.layer;
+      drawnItems.addLayer(drawnAOI);
+    });
+    let chart, currentLayer;
+    async function fetchData() {
+      const start_date = document.getElementById('start').value;
+      const end_date = document.getElementById('end').value;
+      if (!drawnAOI || !start_date || !end_date) {
+        alert("Please draw AOI and select date range.");
+        return;
+      }
+      document.getElementById('spinner').style.display = 'block';
+      const res = await fetch('/get_daily_data', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aoi: drawnAOI.toGeoJSON(), start_date, end_date })
+      });
+      const data = await res.json();
+      document.getElementById('spinner').style.display = 'none';
+      if (!data || data.length === 0) { alert("No data found."); return; }
+      const labels = data.map(d => d.date);
+      const ndvi = data.map(d => d.ndvi ?? null);
+      const kc = data.map(d => d.kc ?? null);
+      const etc = data.map(d => d.etc ?? null);
+      const iwr = data.map(d => d.iwr ?? null);
+      const deltaS = data.map(d => d.deltas ?? null);
+      if (chart) chart.destroy();
+      chart = new Chart(document.getElementById('timeseriesChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'NDVI', data: ndvi, borderColor: 'green', fill: false },
+            { label: 'Kc', data: kc, borderColor: 'blue', fill: false },
+            { label: 'ETc', data: etc, borderColor: 'orange', fill: false },
+            { label: 'IWR', data: iwr, borderColor: 'red', fill: false },
+            { label: 'ΔS', data: deltaS, borderColor: 'purple', borderDash: [4, 4], fill: false }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Daily Irrigation Parameters' }
+          }
+        }
+      });
+    }
+    async function switchLayer() {
+      const selected = document.getElementById('layer').value;
+      if (!drawnAOI) { alert("Please draw an AOI."); return; }
+
+      const res = await fetch('/get_gee_tile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aoi: drawnAOI.toGeoJSON(), layer: selected })
+      });
+
+      const result = await res.json();
+      if (!result.mapid || !result.urlFormat) {
+        alert("Map layer generation failed.");
+        return;
+      }
+
+      const tileUrl = result.urlFormat;
+      if (currentLayer) map.removeLayer(currentLayer);
+      currentLayer = L.tileLayer(tileUrl);
+      currentLayer.addTo(map);
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+      setTimeout(() => map.invalidateSize(), 310);
+    }
+  </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KrishiZest</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet-providers@1.13.0/leaflet-providers.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+    header { height: 60px; background-color: #003366; color: white; display: flex; align-items: center; padding: 0 20px; }
+    header img { height: 45px; }
+    header h2 { margin: 0 20px; }
+    header select { width: 120px; padding: 4px; margin-left: auto; }
+    #content { display: flex; height: calc(100% - 60px); width: 100%; }
+    #sidebar { width: 300px; left : -30px; background-color: #f8f8f8; padding: 15px; overflow-y: auto; transition: transform 0.3s ease; z-index: 1000; }
+    #sidebar.collapsed { transform: translateX(-300px); position: absolute; }
+    #map-container { flex: 1; position: relative; display: flex; flex-direction: column; }
+    #map { flex: 1; }
+    #toggleBtn { position: absolute; top: 10px; left: 100px; background-color: #003366; color: white; width: 32px; height: 32px; font-size: 18px; text-align: center; line-height: 32px; border: none; border-radius: 4px; z-index: 1100; cursor: pointer; }
+    #spinner { position: absolute; top: 50%; left: 50%; z-index: 1050; display: none; transform: translate(-50%, -50%); }
+    .spinner { border: 6px solid #f3f3f3; border-top: 6px solid #003366; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #charts { height: 280px; padding: 10px; background-color: white; }
+    canvas { width: 100% !important; height: 260px !important; }
+    button, select, input[type="date"], input[type="file"], input[type="password"], input[type="text"] {
+      width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc;
+    }
+    button { background-color: #003366; color: white; cursor: pointer; }
+    button:hover { background-color: #00509e; }
+    .btn-green { background-color: #28a745; }
+    .btn-red { background-color: #dc3545; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/static/Powered%20by%20TerrAqua%20UAV%20(1).png" alt="MapZest Logo">
+    <h2>KrishiZest</h2>
+    <select onchange="setLanguage(this.value)">
+      <option value="en">English</option>
+      <option value="hi">हिंदी</option>
+    </select>
+  </header>
+  <div id="content">
+    <div id="sidebar">
+      <h3>📅 Date Range</h3>
+      <label for="start">Start Date:</label>
+      <input type="date" id="start"/>
+      <label for="end">End Date:</label>
+      <input type="date" id="end"/>
+      <button onclick="fetchData()">🔍 Fetch Data</button>
+      <h3>🛠️ Display Layer</h3>
+      <label for="layer">Select Layer:</label>
+      <select id="layer" onchange="switchLayer()">
+        <option value="ndvi">NDVI</option>
+        <option value="kc">Kc</option>
+        <option value="etc">ETc</option>
+        <option value="iwr">IWR</option>
+        <option value="deltas">ΔS</option>
+      </select>
+      <h3>📁 Upload GeoTIFF</h3>
+      <input type="file" id="geotiffFile" accept=".tif,.tiff"/>
+      <button onclick="uploadGeoTIFF()">Upload & Clip</button>
+      <h3>🔍 Export</h3>
+      <button class="btn-green" onclick="exportChartAsImage()">📈 PNG Export</button>
+      <button class="btn-red" onclick="exportChartAsPDF()">📄 PDF Export</button>
+    </div>
+    <div id="map-container">
+      <button id="toggleBtn" onclick="toggleSidebar()">☰</button>
+      <div id="spinner"><div class="spinner"></div></div>
+      <div id="map"></div>
+      <div id="charts"><canvas id="timeseriesChart"></canvas></div>
+    </div>
+  </div>
+  <script>
+    const map = L.map('map', {
+      center: [26.51, 80.23],
+      zoom: 11,
+      layers: [L.tileLayer.provider('Esri.WorldImagery')]
+    });
+    const drawnItems = new L.FeatureGroup().addTo(map);
+    L.control.layers({
+      "OpenStreetMap": L.tileLayer.provider('OpenStreetMap'),
+      "Esri Imagery": L.tileLayer.provider('Esri.WorldImagery')
+    }).addTo(map);
+    const drawControl = new L.Control.Draw({
+      draw: { polygon: true, rectangle: true, marker: false, polyline: false, circle: false, circlemarker: false },
+      edit: { featureGroup: drawnItems }
+    });
+    map.addControl(drawControl);
+    let drawnAOI = null;
+    map.on(L.Draw.Event.CREATED, function (e) {
+      drawnItems.clearLayers();
+      drawnAOI = e.layer;
+      drawnItems.addLayer(drawnAOI);
+    });
+    let chart, currentLayer;
+    async function fetchData() {
+      const start_date = document.getElementById('start').value;
+      const end_date = document.getElementById('end').value;
+      if (!drawnAOI || !start_date || !end_date) {
+        alert("Please draw AOI and select date range.");
+        return;
+      }
+      document.getElementById('spinner').style.display = 'block';
+      const res = await fetch('/get_daily_data', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aoi: drawnAOI.toGeoJSON(), start_date, end_date })
+      });
+      const data = await res.json();
+      document.getElementById('spinner').style.display = 'none';
+      if (!data || data.length === 0 || data.error) { alert("No data found or error occurred."); return; }
+      const labels = data.map(d => d.date);
+      const ndvi = data.map(d => d.ndvi ?? null);
+      const kc = data.map(d => d.kc ?? null);
+      const etc = data.map(d => d.etc ?? null);
+      const iwr = data.map(d => d.iwr ?? null);
+      const deltaS = data.map(d => d.deltas ?? null);
+      if (chart) chart.destroy();
+      chart = new Chart(document.getElementById('timeseriesChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'NDVI', data: ndvi, borderColor: 'green', fill: false },
+            { label: 'Kc', data: kc, borderColor: 'blue', fill: false },
+            { label: 'ETc', data: etc, borderColor: 'orange', fill: false },
+            { label: 'IWR', data: iwr, borderColor: 'red', fill: false },
+            { label: 'ΔS', data: deltaS, borderColor: 'purple', borderDash: [4, 4], fill: false }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Daily Irrigation Parameters' }
+          }
+        }
+      });
+    }
+    async function switchLayer() {
+      const selected = document.getElementById('layer').value;
+      if (!drawnAOI) { alert("Please draw an AOI."); return; }
+      const res = await fetch('/get_gee_tile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aoi: drawnAOI.toGeoJSON(), layer: selected })
+      });
+      const result = await res.json();
+      if (!result.urlFormat) {
+        alert("Map layer generation failed.");
+        return;
+      }
+      const tileUrl = result.urlFormat;
+      if (currentLayer) map.removeLayer(currentLayer);
+      currentLayer = L.tileLayer(tileUrl);
+      currentLayer.addTo(map);
+    }
+
+    // var overlay = {overlay : currentLayer}
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+      setTimeout(() => map.invalidateSize(), 310);
+    }
+  </script>
+</body>
+</html>
+
+

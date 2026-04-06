@@ -1,0 +1,61 @@
+# ====================================================
+# KrishiZest Frontend - Node.js Package Requirements
+# (Summary of package.json for the React + Vite app)
+# ====================================================
+# NOTE: Frontend uses Node.js/npm, NOT pip.
+# To install all packages, run:
+#   npm install
+# inside the /frontend directory.
+#
+# This file is a human-readable reference only.
+# The authoritative source is: frontend/package.json
+# ====================================================
+
+# --- Core Framework ---
+react@^19.2.0
+react-dom@^19.2.0
+
+# --- Routing ---
+react-router-dom@^7.10.1
+
+# --- Mapping Libraries ---
+leaflet@^1.9.4
+leaflet-draw@^1.0.4
+react-leaflet@^5.0.0
+
+# --- Charts ---
+chart.js@^4.5.1
+react-chartjs-2@^5.3.1
+
+# --- Authentication ---
+firebase@^12.6.0
+
+# --- UI / Notifications ---
+sweetalert2@^11.26.3
+react-hot-toast@^2.6.0
+react-icons@^5.5.0
+@fortawesome/fontawesome-free@^7.1.0
+
+# --- Geospatial Utilities ---
+@turf/turf@^7.3.4
+@mapbox/togeojson@^0.16.2
+
+# ====================================================
+# Dev Dependencies (build tooling)
+# ====================================================
+vite@^7.2.4
+@vitejs/plugin-react@^5.1.1
+eslint@^9.39.1
+eslint-plugin-react-hooks@^7.0.1
+eslint-plugin-react-refresh@^0.4.24
+@eslint/js@^9.39.1
+globals@^16.5.0
+@types/react@^19.2.5
+@types/react-dom@^19.2.3
+
+# ====================================================
+# To install and run locally:
+#   cd frontend
+#   npm install
+#   npm run dev
+# ====================================================

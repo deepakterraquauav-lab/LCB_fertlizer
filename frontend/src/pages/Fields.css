@@ -1,0 +1,684 @@
+/* Fields Page Styles */
+.fields-page {
+    min-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;
+    background: #ffffff;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Header - reuse from Dashboard */
+.fields-header {
+    background: var(--card-bg);
+    height: 64px;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Container */
+.fields-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px;
+}
+
+/* Smart Loader CSS - Ultra Compact Version */
+.smart-loader-overlay {
+    position: fixed;
+    top: 85px;
+    /* Positioned just below your header */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    pointer-events: none;
+    /* Lets you click through it */
+    display: flex;
+    justify-content: center;
+}
+
+.smart-loader-content {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    /* Tight padding */
+    border-radius: 10px;
+    width: 300px;
+    /* Fixed small width */
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* Reduce gap between elements */
+    animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.loader-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.satellite-spinner-small {
+    font-size: 18px;
+    /* Smaller icon */
+    color: #2ecc71;
+    display: flex;
+    align-items: center;
+}
+
+.satellite-spinner-small .fa-satellite {
+    animation: float 3s ease-in-out infinite;
+}
+
+.loader-title {
+    margin: 0;
+    font-size: 0.9rem;
+    /* Compact font */
+    font-weight: 700;
+    color: #333;
+}
+
+.progress-container {
+    width: 100%;
+    height: 4px;
+    /* Thin, sleek bar */
+    background-color: #f0f0f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: #2ecc71;
+    transition: width 0.5s ease-out;
+}
+
+.loader-status {
+    font-size: 0.75rem;
+    /* Tiny status text */
+    font-weight: 500;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.loader-tip {
+    display: flex;
+    align-items: start;
+    gap: 6px;
+    background: #fffdf0;
+    /* Very light yellow bg */
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    /* Tiny tip text */
+    color: #666;
+    border: 1px solid #fcf3cf;
+    line-height: 1.3;
+}
+
+.loader-tip i {
+    color: #f1c40f;
+    font-size: 0.8rem;
+    margin-top: 1px;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px) rotate(0deg);
+    }
+
+    50% {
+        transform: translateY(-3px) rotate(10deg);
+    }
+
+    100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Compact Primary Button */
+/* Compact Primary Button */
+.btn-primary {
+    background: linear-gradient(135deg, var(--krishi-green, #00c853), #00a844);
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 6px;
+    /* Reduced space between icon and text for compactness */
+    border: none;
+    border-radius: 8px;
+    /* Slightly reduced border-radius */
+    width: auto !important;
+    min-width: fit-content;
+
+    /* ************************************************* */
+    /* * KEY CHANGE: Decrease horizontal padding (WIDTH) * */
+    /* ************************************************* */
+    padding: 10px 24px;
+
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 200, 83, 0.3);
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+
+/* ... rest of .btn-primary:hover, etc. remains the same */
+
+.btn-primary i {
+    font-size: 14px;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary i {
+    font-size: 14px;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    color: var(--text-secondary);
+}
+
+.loading-state i {
+    font-size: 48px;
+    color: var(--krishi-green);
+    margin-bottom: 16px;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, rgba(0, 200, 83, 0.1), rgba(0, 200, 83, 0.05));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0, 200, 83, 0.1);
+}
+
+.empty-icon i {
+    font-size: 48px;
+    color: var(--krishi-green);
+}
+
+.empty-state h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 8px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 400px;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+/* Fields Grid */
+.fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+/* Field Card - Modern Premium Design */
+.field-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02), 0 10px 15px rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.field-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    /* Interactive lift and minimal scale */
+    box-shadow: 0 12px 24px -8px rgba(0, 200, 83, 0.2);
+    border-color: var(--krishi-green);
+}
+
+/* Add a colored accent line at top */
+.field-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--krishi-green), #00e676);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.field-card:hover::before {
+    opacity: 1;
+}
+
+/* Card Top Section - Clean & Minimal */
+.field-card-top {
+    background: transparent;
+    padding: 16px 20px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.field-badge {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--krishi-green);
+    background: rgba(0, 200, 83, 0.1);
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.field-badge::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+.field-delete-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    opacity: 0;
+    /* Keep hidden until hover */
+    transform: translateX(10px);
+}
+
+.field-card:hover .field-delete-btn {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.field-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Card Body */
+.field-card-body {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.field-name {
+    font-size: 18px;
+    font-weight: 600;
+    /* Simple, standard weight */
+    color: var(--text-main);
+    margin: 0 0 16px 0;
+    line-height: 1.4;
+    letter-spacing: 0;
+}
+
+.field-stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg-light);
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.field-stat {
+    flex: 1;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 600;
+    /* Use standard bold/semibold */
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.stat-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.field-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border-color);
+    margin: 0;
+}
+
+/* Card Footer */
+.field-card-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+}
+
+.field-footer-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.field-card:hover .field-footer-text {
+    color: var(--krishi-green);
+}
+
+.field-card-footer i {
+    font-size: 14px;
+    color: var(--text-secondary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.7;
+}
+
+.field-card:hover .field-card-footer i {
+    transform: translateX(4px);
+    color: var(--krishi-green);
+    opacity: 1;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode .fields-page {
+    background: #121212;
+}
+
+body.dark-mode .fields-header {
+    background: #1e1e1e;
+    border-color: #333;
+}
+
+body.dark-mode .page-title {
+    color: #ffffff;
+}
+
+body.dark-mode .page-subtitle {
+    color: #aaaaaa;
+}
+
+body.dark-mode .field-card {
+    background: #1e1e1e;
+    border-color: #333;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-mode .field-card:hover {
+    border-color: var(--krishi-green);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+body.dark-mode .field-stats {
+    background: #252525;
+    border-color: #333;
+}
+
+body.dark-mode .field-badge {
+    background: rgba(0, 200, 83, 0.15);
+}
+
+body.dark-mode .field-divider {
+    background: #333;
+}
+
+body.dark-mode .field-card-footer {
+    border-color: #333;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .fields-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .fields-container {
+        padding: 16px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .fields-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .field-card-body {
+        padding: 20px;
+    }
+
+    .field-stats {
+        gap: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 24px;
+    }
+
+    .field-name {
+        font-size: 17px;
+    }
+
+    .field-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .field-stats .stat {
+        width: 100%;
+    }
+}
+
+/* Avatar Styles */
+.avatar {
+    width: 36px;
+    height: 36px;
+    background: var(--krishi-green);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.avatar-image {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--krishi-green);
+}
+
+.profile-dropdown {
+    position: relative;
+}
+
+.profile-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border-radius: 20px;
+    transition: background 0.2s;
+}
+
+.profile-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.profile-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--card-bg);
+    min-width: 200px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    padding: 8px 0;
+    display: none;
+    z-index: 1100;
+    margin-top: 12px;
+}
+
+.profile-dropdown.active .profile-menu {
+    display: block;
+    animation: slideDown 0.2s ease;
+}
+
+.user-info {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+}
+
+.user-name {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 14px;
+}
+
+.user-email {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.dropdown-item {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-main);
+    text-decoration: none;
+    font-size: 14px;
+    background: none;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+    background: rgba(0, 200, 83, 0.08);
+}

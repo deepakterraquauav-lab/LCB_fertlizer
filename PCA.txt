@@ -1,0 +1,1011 @@
+###Gives PCA results for each date##############
+
+"""
+FIXED VERSION: Proper data download using geemap
+"""
+
+# ============================================
+# PART 1: SETUP
+# ============================================
+
+import ee
+import geemap
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import pickle
+import os
+from datetime import datetime
+import warnings
+import tempfile
+warnings.filterwarnings('ignore')
+
+# Initialize Earth Engine
+try:
+    ee.Initialize(project='terraquauav')
+    print("✅ Earth Engine initialized!")
+except Exception as e:
+    print("Please authenticate: ee.Authenticate() then ee.Initialize()")
+    raise
+
+# ============================================
+# PART 2: CONFIGURATION
+# ============================================
+
+CONFIG = {
+    'study_area': {
+        'name': 'Punjab',
+        'coordinates': [[74.75475127597738, 30.56461953089272],
+          [74.75475127597738, 30.459913582830946],
+          [74.9315624942391, 30.459913582830946],
+          [74.9315624942391, 30.56461953089272]], 
+        'crs': 'EPSG:4326'
+    },
+    'time_range': {
+        'start_date': '2024-11-01',
+        'end_date': '2025-03-31'
+    },
+    'sentinel2': {
+        'cloud_threshold': 50,  # Increased for more data
+        'scale': 30,  # Coarser scale for faster download
+        'bands': ['B4', 'B8']  # Only Red and NIR for NDVI calculation
+    },
+    'output': {
+        'local_save': True,
+        'output_dir': r"D:\PCA"
+    }
+}
+
+# Create directories
+if CONFIG['output']['local_save']:
+    os.makedirs(CONFIG['output']['output_dir'], exist_ok=True)
+    os.makedirs(os.path.join(CONFIG['output']['output_dir'], 'models'), exist_ok=True)
+
+# ============================================
+# PART 3: SIMPLIFIED FUNCTIONS
+# ============================================
+
+def get_sentinel2_collection(geometry, start_date, end_date):
+    """Get Sentinel-2 collection with cloud filtering."""
+    collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+        .filterBounds(geometry) \
+        .filterDate(start_date, end_date) \
+        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', CONFIG['sentinel2']['cloud_threshold']))
+    
+    return collection
+
+def calculate_indices(image):
+    """Calculate NDVI, SAVI, and LAI for an image."""
+    # Scale to 0-1
+    image = image.divide(10000)
+    
+    # Get bands
+    nir = image.select('B8')
+    red = image.select('B4')
+    
+    # NDVI
+    ndvi = nir.subtract(red).divide(nir.add(red)).rename('NDVI')
+    
+    # SAVI (L=0.5)
+    savi = nir.subtract(red).multiply(1.5).divide(nir.add(red).add(0.5)).rename('SAVI')
+    
+    # LAI (simplified empirical)
+    lai = ndvi.multiply(3.5).add(0.2).rename('LAI')
+    lai = lai.where(lai.lt(0), 0).where(lai.gt(8), 8)
+    
+    # Combine
+    result = ee.Image.cat([ndvi, savi, lai])
+    return result.set('system:time_start', image.get('system:time_start'))
+
+def download_image_data_geemap(image, geometry, date_str):
+    """Download image data using geemap (more reliable)."""
+    try:
+        # Create a temporary directory
+        temp_dir = tempfile.mkdtemp()
+        filename = f"sentinel2_{date_str}.tif"
+        filepath = os.path.join(temp_dir, filename)
+        
+        # Download using geemap
+        geemap.ee_export_image(
+            image,
+            filename=filepath,
+            scale=CONFIG['sentinel2']['scale'],
+            region=geometry,
+            file_per_band=False
+        )
+        
+        # Check if file was created
+        if os.path.exists(filepath):
+            print(f"  ✅ Downloaded: {filepath}")
+            
+            # Try to read with rasterio
+            try:
+                import rasterio
+                with rasterio.open(filepath) as src:
+                    data = src.read()  # Shape: (bands, height, width)
+                    
+                # Reshape to (pixels, bands)
+                bands, height, width = data.shape
+                data_reshaped = data.transpose(1, 2, 0).reshape(-1, bands)
+                
+                # Cleanup
+                os.remove(filepath)
+                os.rmdir(temp_dir)
+                
+                return data_reshaped
+                
+            except Exception as e:
+                print(f"  ❌ Error reading file: {e}")
+                return None
+        else:
+            print(f"  ❌ File not created: {filepath}")
+            return None
+            
+    except Exception as e:
+        print(f"  ❌ Download error: {e}")
+        return None
+
+def download_image_data_simple(image, geometry, date_str):
+    """Simpler download using sampleRectangle."""
+    try:
+        # Get data as dictionary
+        data_dict = image.sampleRectangle(
+            region=geometry,
+            defaultValue=0
+        ).getInfo()
+        
+        # Extract the bands
+        ndvi_data = np.array(data_dict['properties']['NDVI'])
+        savi_data = np.array(data_dict['properties']['SAVI'])
+        lai_data = np.array(data_dict['properties']['LAI'])
+        
+        # Stack into (height, width, bands)
+        stacked = np.stack([ndvi_data, savi_data, lai_data], axis=-1)
+        
+        # Reshape to (pixels, bands)
+        height, width, bands = stacked.shape
+        data_reshaped = stacked.reshape(-1, bands)
+        
+        return data_reshaped
+        
+    except Exception as e:
+        print(f"  ❌ Simple download failed: {e}")
+        
+        # Try alternative method
+        try:
+            print(f"  Trying alternative method...")
+            
+            # Get the image as array using reduceRegion
+            stats = image.reduceRegion(
+                reducer=ee.Reducer.toList(),
+                geometry=geometry,
+                scale=CONFIG['sentinel2']['scale'],
+                maxPixels=1e6
+            ).getInfo()
+            
+            # Extract arrays
+            ndvi_vals = stats['NDVI']
+            savi_vals = stats['SAVI']
+            lai_vals = stats['LAI']
+            
+            if ndvi_vals and len(ndvi_vals) > 0:
+                data = np.column_stack([ndvi_vals, savi_vals, lai_vals])
+                print(f"  ✅ Got {len(data)} pixels via reduceRegion")
+                return data
+            else:
+                return None
+                
+        except Exception as e2:
+            print(f"  ❌ Alternative method also failed: {e2}")
+            return None
+
+# ============================================
+# PART 4: MAIN EXECUTION
+# ============================================
+
+print("="*60)
+print("SENTINEL-2 PCA ANALYSIS - FIXED DOWNLOAD")
+print("="*60)
+
+# Setup study area
+coords = CONFIG['study_area']['coordinates']
+lons = [p[0] for p in coords]
+lats = [p[1] for p in coords]
+bbox = [min(lons), min(lats), max(lons), max(lats)]
+study_area = ee.Geometry.Rectangle(bbox)
+
+print(f"\n📍 Study Area Bounds: {bbox}")
+
+# Get Sentinel-2 collection
+print(f"\n1. Getting Sentinel-2 collection...")
+collection = get_sentinel2_collection(
+    study_area, 
+    CONFIG['time_range']['start_date'], 
+    CONFIG['time_range']['end_date']
+)
+
+# Get image list
+image_list = collection.toList(collection.size())
+n_images = image_list.size().getInfo()
+print(f"   Found {n_images} images")
+
+if n_images == 0:
+    print("❌ No images found! Exiting.")
+    exit()
+
+# Process each image
+print(f"\n2. Processing {n_images} images...")
+date_data = {}
+successful_dates = []
+
+for i in range(n_images):
+    try:
+        # Get image
+        image = ee.Image(image_list.get(i))
+        
+        # Get date
+        timestamp = image.get('system:time_start').getInfo()
+        date_str = datetime.fromtimestamp(timestamp/1000).strftime('%Y-%m-%d')
+        
+        print(f"\n📅 Processing {date_str} (image {i+1}/{n_images})...")
+        
+        # Calculate indices
+        indices_image = calculate_indices(image)
+        
+        # Download data using simple method
+        print(f"  Downloading data...")
+        data = download_image_data_simple(indices_image, study_area, date_str)
+        
+        if data is None or len(data) == 0:
+            print(f"  ⚠️ Could not download data")
+            continue
+        
+        print(f"  ✅ Downloaded {len(data)} pixels")
+        
+        # Check data quality
+        if len(data) < 100:
+            print(f"  ⚠️ Too few pixels: {len(data)}")
+            continue
+        
+        # Remove NaN/inf
+        valid_mask = np.all(np.isfinite(data), axis=1)
+        data = data[valid_mask]
+        
+        if len(data) < 100:
+            print(f"  ⚠️ Too few valid pixels after cleaning: {len(data)}")
+            continue
+        
+        print(f"  ✅ {len(data)} valid pixels")
+        
+        # Store data
+        date_data[date_str] = data
+        successful_dates.append(date_str)
+        
+    except Exception as e:
+        print(f"  ❌ Error processing image: {e}")
+        continue
+
+print(f"\n✅ Successfully processed {len(successful_dates)} dates")
+print(f"   Dates: {successful_dates}")
+
+if len(successful_dates) == 0:
+    print("❌ No dates with sufficient data!")
+    print("\n⚠️ Troubleshooting suggestions:")
+    print("1. Increase cloud threshold in CONFIG")
+    print("2. Increase scale (e.g., 100m) for faster download")
+    print("3. Try a different date range")
+    print("4. Check if area has cloud-free images")
+    exit()
+
+# ============================================
+# PART 5: SINGLE-DATE PCA
+# ============================================
+
+print("\n" + "="*60)
+print("PERFORMING SINGLE-DATE PCA")
+print("="*60)
+
+single_date_models = {}
+
+for date_str in successful_dates:
+    print(f"\n📊 PCA for {date_str}")
+    data = date_data[date_str]
+    
+    # Take a sample if too large (for speed)
+    if len(data) > 10000:
+        np.random.seed(42)
+        idx = np.random.choice(len(data), 10000, replace=False)
+        data = data[idx]
+        print(f"  Sampled to {len(data)} pixels")
+    
+    # Standardize
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data)
+    
+    # Perform PCA
+    pca = PCA(n_components=2)
+    pca_scores = pca.fit_transform(data_scaled)
+    
+    # Store model
+    single_date_models[date_str] = {
+        'scaler': scaler,
+        'pca': pca,
+        'scores': pca_scores,
+        'explained_variance': pca.explained_variance_ratio_,
+        'loadings': pca.components_,
+        'original_data': data,
+        'n_pixels': len(data),
+        'mean_ndvi': np.mean(data[:, 0]),
+        'mean_savi': np.mean(data[:, 1]),
+        'mean_lai': np.mean(data[:, 2])
+    }
+    
+    print(f"  ✅ PCA completed")
+    print(f"     Pixels: {len(data)}")
+    print(f"     Mean NDVI: {np.mean(data[:, 0]):.3f}")
+    print(f"     Variance: PC1={pca.explained_variance_ratio_[0]:.1%}, PC2={pca.explained_variance_ratio_[1]:.1%}")
+    print(f"     PC1 loadings: NDVI={pca.components_[0,0]:.3f}, SAVI={pca.components_[0,1]:.3f}, LAI={pca.components_[0,2]:.3f}")
+
+# ============================================
+# PART 6: MULTI-DATE PCA
+# ============================================
+
+print("\n" + "="*60)
+print("PERFORMING MULTI-DATE PCA")
+print("="*60)
+
+if len(successful_dates) > 1:
+    # Combine data from all dates
+    print(f"\nCombining data from {len(successful_dates)} dates...")
+    
+    # Take equal samples from each date
+    min_samples = min([len(date_data[d]) for d in successful_dates])
+    sample_size = min(2000, min_samples)  # Limit sample size
+    
+    combined_samples = []
+    date_labels = []
+    
+    for date_str in successful_dates:
+        data = date_data[date_str]
+        
+        # Random sample
+        np.random.seed(42)
+        if len(data) > sample_size:
+            idx = np.random.choice(len(data), sample_size, replace=False)
+            data_sample = data[idx]
+        else:
+            data_sample = data
+        
+        combined_samples.append(data_sample)
+        date_labels.extend([date_str] * len(data_sample))
+    
+    combined_data = np.vstack(combined_samples)
+    date_labels = np.array(date_labels)
+    
+    print(f"  Total pixels: {len(combined_data)}")
+    print(f"  Samples per date: {sample_size}")
+    
+    # Remove invalid values
+    valid_mask = np.all(np.isfinite(combined_data), axis=1)
+    combined_data = combined_data[valid_mask]
+    date_labels = date_labels[valid_mask]
+    
+    print(f"  Valid pixels: {len(combined_data)}")
+    
+    if len(combined_data) > 0:
+        # Standardize
+        scaler_multi = StandardScaler()
+        data_scaled_multi = scaler_multi.fit_transform(combined_data)
+        
+        # Multi-date PCA
+        pca_multi = PCA(n_components=2)
+        pca_scores_multi = pca_multi.fit_transform(data_scaled_multi)
+        
+        print(f"\n✅ Multi-date PCA completed")
+        print(f"   Variance: PC1={pca_multi.explained_variance_ratio_[0]:.1%}, PC2={pca_multi.explained_variance_ratio_[1]:.1%}")
+        print(f"   PC1 loadings: NDVI={pca_multi.components_[0,0]:.3f}, SAVI={pca_multi.components_[0,1]:.3f}, LAI={pca_multi.components_[0,2]:.3f}")
+        
+        multi_date_model = {
+            'scaler': scaler_multi,
+            'pca': pca_multi,
+            'scores': pca_scores_multi,
+            'explained_variance': pca_multi.explained_variance_ratio_,
+            'loadings': pca_multi.components_,
+            'date_labels': date_labels,
+            'dates_used': successful_dates,
+            'combined_data': combined_data
+        }
+    else:
+        print("❌ Not enough valid data for multi-date PCA")
+        multi_date_model = None
+else:
+    print("⚠️ Need at least 2 dates for multi-date PCA")
+    multi_date_model = None
+
+# ============================================
+# PART 7: SAVE MODELS
+# ============================================
+
+print("\n" + "="*60)
+print("SAVING MODELS")
+print("="*60)
+
+models_dir = os.path.join(CONFIG['output']['output_dir'], 'models')
+
+# Save single-date models
+print(f"\n💾 Saving {len(single_date_models)} single-date models...")
+for date_str, model_data in single_date_models.items():
+    save_model = {
+        'date': date_str,
+        'scaler': model_data['scaler'],
+        'pca': model_data['pca'],
+        'explained_variance': model_data['explained_variance'],
+        'loadings': model_data['loadings'],
+        'mean_values': np.mean(model_data['original_data'], axis=0),
+        'std_values': np.std(model_data['original_data'], axis=0),
+        'n_pixels': model_data['n_pixels']
+    }
+    
+    model_path = os.path.join(models_dir, f'pca_{date_str}.pkl')
+    with open(model_path, 'wb') as f:
+        pickle.dump(save_model, f)
+    print(f"  ✅ {date_str}")
+
+# Save multi-date model
+if multi_date_model is not None:
+    print(f"\n💾 Saving multi-date model...")
+    multi_model_path = os.path.join(models_dir, 'pca_multidate.pkl')
+    with open(multi_model_path, 'wb') as f:
+        pickle.dump(multi_date_model, f)
+    print(f"  ✅ Multi-date model")
+
+# ============================================
+# PART 8: VISUALIZATION
+# ============================================
+
+print("\n" + "="*60)
+print("CREATING VISUALIZATIONS")
+print("="*60)
+
+# 1. PCA Loadings Over Time
+if len(single_date_models) > 1:
+    dates = list(single_date_models.keys())
+    pc1_ndvi = [single_date_models[d]['loadings'][0,0] for d in dates]
+    pc1_savi = [single_date_models[d]['loadings'][0,1] for d in dates]
+    pc1_lai = [single_date_models[d]['loadings'][0,2] for d in dates]
+    
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+    
+    # Plot 1: Loadings
+    ax1.plot(dates, pc1_ndvi, 'o-', label='NDVI', color='green', linewidth=2, markersize=8)
+    ax1.plot(dates, pc1_savi, 's-', label='SAVI', color='blue', linewidth=2, markersize=8)
+    ax1.plot(dates, pc1_lai, '^-', label='LAI', color='red', linewidth=2, markersize=8)
+    
+    ax1.set_xlabel('Date', fontsize=12)
+    ax1.set_ylabel('PC1 Loading', fontsize=12)
+    ax1.set_title('PC1 Loadings Over Time', fontsize=14, fontweight='bold')
+    ax1.legend(loc='best', fontsize=11)
+    ax1.grid(True, alpha=0.3)
+    ax1.tick_params(axis='x', rotation=45)
+    
+    # Plot 2: Mean values over time
+    mean_ndvi = [single_date_models[d]['mean_ndvi'] for d in dates]
+    mean_savi = [single_date_models[d]['mean_savi'] for d in dates]
+    mean_lai = [single_date_models[d]['mean_lai'] for d in dates]
+    
+    ax2.plot(dates, mean_ndvi, 'o-', label='Mean NDVI', color='green', linewidth=2, markersize=8)
+    ax2.plot(dates, mean_savi, 's-', label='Mean SAVI', color='blue', linewidth=2, markersize=8)
+    ax2.plot(dates, mean_lai, '^-', label='Mean LAI', color='red', linewidth=2, markersize=8)
+    
+    ax2.set_xlabel('Date', fontsize=12)
+    ax2.set_ylabel('Mean Value', fontsize=12)
+    ax2.set_title('Vegetation Indices Over Time', fontsize=14, fontweight='bold')
+    ax2.legend(loc='best', fontsize=11)
+    ax2.grid(True, alpha=0.3)
+    ax2.tick_params(axis='x', rotation=45)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(CONFIG['output']['output_dir'], 'pc1_loadings_and_indices.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+
+# 2. Explained Variance by Date
+if len(single_date_models) > 1:
+    dates = list(single_date_models.keys())
+    pc1_var = [single_date_models[d]['explained_variance'][0] for d in dates]
+    pc2_var = [single_date_models[d]['explained_variance'][1] for d in dates]
+    total_var = [pc1_var[i] + pc2_var[i] for i in range(len(dates))]
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    x = np.arange(len(dates))
+    width = 0.25
+    
+    ax.bar(x - width, pc1_var, width, label='PC1 Variance', color='skyblue', edgecolor='black')
+    ax.bar(x, pc2_var, width, label='PC2 Variance', color='lightcoral', edgecolor='black')
+    ax.bar(x + width, total_var, width, label='Total Variance (PC1+PC2)', color='lightgreen', edgecolor='black', alpha=0.6)
+    
+    ax.set_xlabel('Date', fontsize=12)
+    ax.set_ylabel('Explained Variance Ratio', fontsize=12)
+    ax.set_title('PCA Explained Variance by Date', fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(dates, rotation=45)
+    ax.legend(loc='best', fontsize=11)
+    ax.grid(True, alpha=0.3, axis='y')
+    
+    # Add value labels
+    for i, v in enumerate(pc1_var):
+        ax.text(i - width, v + 0.01, f'{v:.1%}', ha='center', va='bottom', fontsize=9)
+    for i, v in enumerate(pc2_var):
+        ax.text(i, v + 0.01, f'{v:.1%}', ha='center', va='bottom', fontsize=9)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(CONFIG['output']['output_dir'], 'explained_variance_by_date.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+
+# 3. Multi-date PCA visualization
+if multi_date_model is not None and len(successful_dates) > 1:
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    
+    # PC1 vs PC2 colored by date
+    unique_dates = np.unique(multi_date_model['date_labels'])
+    colors = plt.cm.tab10(np.linspace(0, 1, len(unique_dates)))
+    
+    for i, date_str in enumerate(unique_dates):
+        mask = multi_date_model['date_labels'] == date_str
+        axes[0].scatter(multi_date_model['scores'][mask, 0], 
+                       multi_date_model['scores'][mask, 1],
+                       color=colors[i], 
+                       label=date_str, 
+                       s=20, alpha=0.6, edgecolor='black', linewidth=0.5)
+    
+    axes[0].set_xlabel('PC1', fontsize=12)
+    axes[0].set_ylabel('PC2', fontsize=12)
+    axes[0].set_title(f'Multi-Date PCA: PC1 vs PC2\n({len(multi_date_model["scores"])} pixels)', 
+                     fontsize=14, fontweight='bold')
+    axes[0].legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+    axes[0].grid(True, alpha=0.3)
+    
+    # Loadings heatmap
+    loadings = multi_date_model['loadings']
+    im = axes[1].imshow(loadings, 
+                       cmap='RdBu_r', 
+                       aspect='auto',
+                       vmin=-1, vmax=1)
+    
+    axes[1].set_xticks([0, 1, 2])
+    axes[1].set_xticklabels(['NDVI', 'SAVI', 'LAI'], fontsize=12)
+    axes[1].set_yticks([0, 1])
+    axes[1].set_yticklabels(['PC1', 'PC2'], fontsize=12)
+    axes[1].set_title('Multi-Date PCA Loadings', fontsize=14, fontweight='bold')
+    
+    # Add loadings values as text
+    for i in range(2):
+        for j in range(3):
+            axes[1].text(j, i, f'{loadings[i,j]:.3f}', 
+                        ha='center', va='center', 
+                        color='black' if abs(loadings[i,j]) < 0.7 else 'white',
+                        fontweight='bold', fontsize=11)
+    
+    plt.colorbar(im, ax=axes[1], label='Loading Value')
+    
+    # Scree plot
+    exp_var = multi_date_model['explained_variance']
+    cum_var = np.cumsum(exp_var)
+    
+    axes[2].bar([1, 2], exp_var, color=['skyblue', 'lightcoral'], edgecolor='black')
+    axes[2].plot([1, 2], cum_var, 'ro-', linewidth=2, markersize=8)
+    
+    for i, (ev, cv) in enumerate(zip(exp_var, cum_var)):
+        axes[2].text(i+1, ev + 0.01, f'{ev:.1%}', ha='center', va='bottom', fontsize=11, fontweight='bold')
+        axes[2].text(i+1, cv + 0.01, f'{cv:.1%}', ha='center', va='bottom', fontsize=11, fontweight='bold', color='red')
+    
+    axes[2].set_xlabel('Principal Component', fontsize=12)
+    axes[2].set_ylabel('Explained Variance Ratio', fontsize=12)
+    axes[2].set_title('Scree Plot (Multi-Date)', fontsize=14, fontweight='bold')
+    axes[2].set_xticks([1, 2])
+    axes[2].set_xticklabels(['PC1', 'PC2'])
+    axes[2].set_ylim([0, 1.1])
+    axes[2].grid(True, alpha=0.3, axis='y')
+    axes[2].legend(['Individual', 'Cumulative'], loc='upper left')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(CONFIG['output']['output_dir'], 'multidate_pca_visualization.png'), 
+                dpi=300, bbox_inches='tight')
+    plt.show()
+
+# ============================================
+# PART 9: EXPORT RESULTS
+# ============================================
+
+print("\n" + "="*60)
+print("EXPORTING RESULTS")
+print("="*60)
+
+# Export summary CSV
+print(f"\n📊 Exporting summary CSV...")
+summary_data = []
+
+for date_str in successful_dates:
+    model_data = single_date_models[date_str]
+    data = model_data['original_data']
+    
+    summary_data.append({
+        'Date': date_str,
+        'N_Pixels': model_data['n_pixels'],
+        'Mean_NDVI': np.mean(data[:, 0]),
+        'Mean_SAVI': np.mean(data[:, 1]),
+        'Mean_LAI': np.mean(data[:, 2]),
+        'Std_NDVI': np.std(data[:, 0]),
+        'Std_SAVI': np.std(data[:, 1]),
+        'Std_LAI': np.std(data[:, 2]),
+        'PC1_Variance': model_data['explained_variance'][0],
+        'PC2_Variance': model_data['explained_variance'][1],
+        'PC1_NDVI_Loading': model_data['loadings'][0,0],
+        'PC1_SAVI_Loading': model_data['loadings'][0,1],
+        'PC1_LAI_Loading': model_data['loadings'][0,2],
+        'PC2_NDVI_Loading': model_data['loadings'][1,0],
+        'PC2_SAVI_Loading': model_data['loadings'][1,1],
+        'PC2_LAI_Loading': model_data['loadings'][1,2],
+    })
+
+df_summary = pd.DataFrame(summary_data)
+csv_summary_path = os.path.join(CONFIG['output']['output_dir'], 'pca_summary_by_date.csv')
+df_summary.to_csv(csv_summary_path, index=False)
+print(f"  ✅ Summary CSV: {csv_summary_path}")
+
+# Export data for each date
+print(f"\n📊 Exporting data for each date...")
+for date_str in successful_dates:
+    model_data = single_date_models[date_str]
+    data = model_data['original_data']
+    scores = model_data['scores']
+    
+    df = pd.DataFrame({
+        'NDVI': data[:, 0],
+        'SAVI': data[:, 1],
+        'LAI': data[:, 2],
+        'PC1': scores[:, 0],
+        'PC2': scores[:, 1]
+    })
+    
+    csv_path = os.path.join(CONFIG['output']['output_dir'], f'pca_data_{date_str}.csv')
+    df.to_csv(csv_path, index=False)
+    print(f"  ✅ {date_str}: {len(df)} rows")
+
+print(f"\n" + "="*60)
+print("ANALYSIS COMPLETE!")
+print("="*60)
+print(f"\n📅 Dates processed: {successful_dates}")
+print(f"📁 Output directory: {CONFIG['output']['output_dir']}")
+print(f"📁 Models directory: {models_dir}")
+print(f"\n📊 Summary:")
+print(f"  - Single-date PCA models: {len(single_date_models)}")
+print(f"  - Multi-date PCA model: {'Yes' if multi_date_model else 'No'}")
+print(f"  - Visualizations created: {len(successful_dates) > 1}")
+
+
+###################################################################################
+
+
+"""
+Batch Generate PCA Rasters for Multiple Dates
+Author: AI Assistant
+Date: 2025
+
+Process multiple dates at once and create time-series PCA rasters.
+"""
+
+import ee
+import geemap
+import numpy as np
+import pickle
+import os
+from datetime import datetime
+import rasterio
+from rasterio.transform import from_bounds
+import matplotlib.pyplot as plt
+import glob
+
+# ============================================
+# CONFIGURATION
+# ============================================
+
+BATCH_CONFIG = {
+    'study_area': {
+        'coordinates': [[79.88179241867277, 27.0655583521695],
+          [79.88179241867277, 27.059309938307866],
+          [79.88840138168547, 27.059309938307866],
+          [79.88840138168547, 27.0655583521695]], 
+    },
+    'models_dir': r"D:\PCA\models",
+    'raster_dir': r"D:\PCA\rasters_batch",
+    'scale': 10,
+    'use_multidate_model': True,  # Use the multi-date model for all
+    'process_dates': 'all'  # 'all' or list of dates like ['2024-11-02', '2024-11-07']
+}
+
+os.makedirs(BATCH_CONFIG['raster_dir'], exist_ok=True)
+
+# ============================================
+# IMPORT FUNCTIONS FROM MAIN SCRIPT
+# ============================================
+
+def mask_s2_clouds(image):
+    qa = image.select('QA60')
+    cloud_bitmask = 1 << 10
+    cirrus_bitmask = 1 << 11
+    mask = qa.bitwiseAnd(cloud_bitmask).eq(0).And(qa.bitwiseAnd(cirrus_bitmask).eq(0))
+    return image.divide(10000).copyProperties(image, ['system:time_start'])
+
+def calculate_indices(image):
+    nir = image.select('B8')
+    red = image.select('B4')
+    ndvi = nir.subtract(red).divide(nir.add(red)).rename('NDVI')
+    savi = nir.subtract(red).multiply(1.5).divide(nir.add(red).add(0.5)).rename('SAVI')
+    lai = ndvi.multiply(3.5).add(0.2).rename('LAI')
+    lai = lai.where(lai.lt(0), 0).where(lai.gt(8), 8)
+    return image.addBands([ndvi, savi, lai])
+
+def get_sentinel2_image(geometry, target_date, days_buffer=7):
+    start = ee.Date(target_date).advance(-days_buffer, 'day')
+    end = ee.Date(target_date).advance(days_buffer, 'day')
+    
+    collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+        .filterBounds(geometry) \
+        .filterDate(start, end) \
+        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
+        .map(mask_s2_clouds) \
+        .map(calculate_indices)
+    
+    if collection.size().getInfo() == 0:
+        return None, None
+    
+    image = ee.Image(collection.first())
+    actual_date = ee.Date(image.get('system:time_start')).format('YYYY-MM-dd').getInfo()
+    
+    return image, actual_date
+
+def image_to_array(image, geometry, scale):
+    """Simplified array extraction using sampleRectangle."""
+    bbox = geometry.bounds().getInfo()['coordinates'][0]
+    lons = [p[0] for p in bbox]
+    lats = [p[1] for p in bbox]
+    bounds = [min(lons), min(lats), max(lons), max(lats)]
+    
+    indices_image = image.select(['NDVI', 'SAVI', 'LAI'])
+    sampled = indices_image.sampleRectangle(region=geometry.bounds(), defaultValue=0)
+    
+    ndvi = np.array(sampled.get('NDVI').getInfo())
+    savi = np.array(sampled.get('SAVI').getInfo())
+    lai = np.array(sampled.get('LAI').getInfo())
+    
+    height, width = ndvi.shape
+    transform = from_bounds(bounds[0], bounds[1], bounds[2], bounds[3], width, height)
+    crs = 'EPSG:4326'
+    
+    return ndvi, savi, lai, transform, crs
+
+def apply_pca(ndvi, savi, lai, model_data):
+    height, width = ndvi.shape
+    stacked = np.stack([ndvi.flatten(), savi.flatten(), lai.flatten()], axis=1)
+    valid_mask = ~np.any(np.isnan(stacked), axis=1) & ~np.any(np.isinf(stacked), axis=1)
+    
+    pc1_flat = np.full(height * width, np.nan)
+    pc2_flat = np.full(height * width, np.nan)
+    
+    if np.sum(valid_mask) > 0:
+        valid_data = stacked[valid_mask]
+        scaled_data = model_data['scaler'].transform(valid_data)
+        pc_scores = model_data['pca'].transform(scaled_data)
+        pc1_flat[valid_mask] = pc_scores[:, 0]
+        pc2_flat[valid_mask] = pc_scores[:, 1]
+    
+    return pc1_flat.reshape(height, width), pc2_flat.reshape(height, width)
+
+def save_raster(array, output_path, transform, crs, nodata=-9999):
+    array_out = np.where(np.isnan(array), nodata, array)
+    with rasterio.open(
+        output_path, 'w', driver='GTiff',
+        height=array.shape[0], width=array.shape[1], count=1,
+        dtype=array_out.dtype, crs=crs, transform=transform,
+        nodata=nodata, compress='lzw'
+    ) as dst:
+        dst.write(array_out, 1)
+
+# ============================================
+# BATCH PROCESSING
+# ============================================
+
+def get_available_dates():
+    """Get all dates that have trained single-date PCA models."""
+    model_files = glob.glob(
+        os.path.join(BATCH_CONFIG['models_dir'], 'pca_*.pkl')
+    )
+
+    dates = []
+    for f in model_files:
+        basename = os.path.basename(f)
+
+        # Skip multidate model explicitly
+        if basename == 'pca_multidate.pkl':
+            continue
+
+        # Extract date
+        date_str = basename.replace('pca_', '').replace('.pkl', '')
+
+        # Basic validation
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+            dates.append(date_str)
+        except ValueError:
+            continue
+
+    return sorted(dates)
+
+
+def process_single_date(study_area, target_date, model_data):
+    """Process a single date and generate rasters."""
+    print(f"\n{'='*60}")
+    print(f"Processing: {target_date}")
+    print(f"{'='*60}")
+    
+    # Get image
+    image, actual_date = get_sentinel2_image(study_area, target_date)
+    
+    if image is None:
+        print(f"  ❌ No image available for {target_date}")
+        return False
+    
+    print(f"  ✓ Found image from {actual_date}")
+    
+    # Download data
+    try:
+        ndvi, savi, lai, transform, crs = image_to_array(image, study_area, BATCH_CONFIG['scale'])
+        print(f"  ✓ Downloaded data: {ndvi.shape}")
+    except Exception as e:
+        print(f"  ❌ Download failed: {e}")
+        return False
+    
+    # Apply PCA
+    try:
+        pc1, pc2 = apply_pca(ndvi, savi, lai, model_data)
+        valid_pct = 100 * np.sum(~np.isnan(pc1)) / pc1.size
+        print(f"  ✓ Applied PCA: {valid_pct:.1f}% valid pixels")
+    except Exception as e:
+        print(f"  ❌ PCA failed: {e}")
+        return False
+    
+    # Save rasters
+    try:
+        date_str = actual_date.replace('-', '')
+        pc1_path = os.path.join(BATCH_CONFIG['raster_dir'], f'PC1_{date_str}.tif')
+        pc2_path = os.path.join(BATCH_CONFIG['raster_dir'], f'PC2_{date_str}.tif')
+        
+        save_raster(pc1, pc1_path, transform, crs)
+        save_raster(pc2, pc2_path, transform, crs)
+        print(f"  ✓ Saved: {os.path.basename(pc1_path)}, {os.path.basename(pc2_path)}")
+        
+        return True
+    except Exception as e:
+        print(f"  ❌ Save failed: {e}")
+        return False
+
+def create_time_series_animation():
+    """Create animated GIF showing PC1 evolution over time."""
+    print("\nCreating time-series animation...")
+    
+    pc1_files = sorted(glob.glob(os.path.join(BATCH_CONFIG['raster_dir'], 'PC1_*.tif')))
+    
+    if len(pc1_files) < 2:
+        print("  Not enough files for animation")
+        return
+    
+    fig, ax = plt.subplots(figsize=(10, 8))
+    images = []
+    
+    for pc1_file in pc1_files:
+        with rasterio.open(pc1_file) as src:
+            data = src.read(1)
+            data = np.where(data == -9999, np.nan, data)
+            
+            date_str = os.path.basename(pc1_file).replace('PC1_', '').replace('.tif', '')
+            date_formatted = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+            
+            ax.clear()
+            valid_data = data[~np.isnan(data)]
+            vmin, vmax = np.percentile(valid_data, [2, 98]) if len(valid_data) > 0 else (0, 1)
+            
+            im = ax.imshow(data, cmap='RdYlBu_r', vmin=vmin, vmax=vmax)
+            ax.set_title(f'PC1 - {date_formatted}', fontsize=14, fontweight='bold')
+            ax.axis('off')
+            
+            # Save frame
+            frame_path = os.path.join(BATCH_CONFIG['raster_dir'], f'frame_{date_str}.png')
+            plt.savefig(frame_path, dpi=150, bbox_inches='tight')
+            images.append(frame_path)
+    
+    plt.close()
+    
+    # Create GIF (requires imageio)
+    try:
+        import imageio
+        gif_path = os.path.join(BATCH_CONFIG['raster_dir'], 'PC1_timeseries.gif')
+        
+        with imageio.get_writer(gif_path, mode='I', duration=0.5) as writer:
+            for frame_path in images:
+                image = imageio.imread(frame_path)
+                writer.append_data(image)
+                os.remove(frame_path)  # Clean up
+        
+        print(f"  ✓ Saved animation: {gif_path}")
+    except ImportError:
+        print("  ℹ Install imageio to create GIF: pip install imageio")
+
+def main():
+    print("="*60)
+    print("BATCH PCA RASTER GENERATION")
+    print("="*60)
+    
+    # Initialize Earth Engine
+    try:
+        ee.Initialize(project='terraquauav')
+    except:
+        print("Please authenticate Earth Engine")
+        return
+    
+    # Setup study area
+    coords = BATCH_CONFIG['study_area']['coordinates']
+    lons = [p[0] for p in coords]
+    lats = [p[1] for p in coords]
+    bbox = [min(lons), min(lats), max(lons), max(lats)]
+    study_area = ee.Geometry.Rectangle(bbox)
+    
+    # Load model
+    model_path = os.path.join(BATCH_CONFIG['models_dir'], 'pca_multidate.pkl')
+    if not os.path.exists(model_path):
+        print(f"Error: Multi-date model not found at {model_path}")
+        return
+    
+    with open(model_path, 'rb') as f:
+        model_data = pickle.load(f)
+    print(f"✓ Loaded multi-date PCA model")
+    
+    # Get dates to process
+    if BATCH_CONFIG['process_dates'] == 'all':
+        dates_to_process = get_available_dates()
+        print(f"\nFound {len(dates_to_process)} dates with trained models")
+    else:
+        dates_to_process = BATCH_CONFIG['process_dates']
+    
+    print(f"Processing {len(dates_to_process)} dates...")
+    
+    # Process each date
+    success_count = 0
+    for date in dates_to_process:
+        if process_single_date(study_area, date, model_data):
+            success_count += 1
+    
+    # Create animation
+    if success_count > 1:
+        create_time_series_animation()
+    
+    # Summary
+    print("\n" + "="*60)
+    print("BATCH PROCESSING COMPLETE")
+    print("="*60)
+    print(f"Successfully processed: {success_count}/{len(dates_to_process)} dates")
+    print(f"Output directory: {BATCH_CONFIG['raster_dir']}")
+    
+    # List all generated files
+    all_rasters = glob.glob(os.path.join(BATCH_CONFIG['raster_dir'], '*.tif'))
+    print(f"\nGenerated {len(all_rasters)} raster files:")
+    for raster in sorted(all_rasters)[:10]:  # Show first 10
+        print(f"  - {os.path.basename(raster)}")
+    if len(all_rasters) > 10:
+        print(f"  ... and {len(all_rasters)-10} more")
+
+if __name__ == "__main__":
+    main()
+

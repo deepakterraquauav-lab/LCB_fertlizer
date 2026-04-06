@@ -1,0 +1,396 @@
+/* Create Field Page Styles */
+.create-field-page {
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Header */
+.create-field-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    height: 60px;
+}
+
+.create-field-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.create-field-header .brand {
+    text-decoration: none;
+}
+
+/* Search Container */
+.create-field-header .search-container {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    display: flex;
+    align-items: center;
+    background: #f0f2f5;
+    border-radius: 20px;
+    padding: 4px 12px;
+    border: 1px solid #d1d5db;
+}
+
+.create-field-header .search-input {
+    background: transparent;
+    border: none;
+    color: #000000;
+    width: 100%;
+    padding: 4px 8px;
+    outline: none;
+    font-family: 'Poppins', sans-serif;
+}
+
+.create-field-header .search-input::placeholder {
+    color: #555555;
+}
+
+.create-field-header .search-btn {
+    background: transparent;
+    border: none;
+    color: #333333;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.create-field-header .search-btn:hover {
+    color: var(--krishi-green);
+}
+
+/* Header Actions */
+.create-field-header .header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.create-field-header .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'Poppins', sans-serif;
+    height: 36px;
+    /* Explicit height to fit header */
+}
+
+.create-field-header .btn-secondary {
+    background: white;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.create-field-header .btn-secondary:hover {
+    background: #f9fafb;
+    border-color: var(--krishi-green);
+    color: var(--krishi-green);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Map */
+.create-field-map {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+}
+
+/* Start Overlay */
+.start-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.instruction-card {
+    background: white;
+    padding: 40px;
+    border-radius: 24px;
+    text-align: center;
+    max-width: 400px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.icon-circle {
+    width: 80px;
+    height: 80px;
+    background: #e8f5e9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    color: var(--krishi-green);
+    font-size: 32px;
+}
+
+.instruction-card h2 {
+    font-size: 24px;
+    margin-bottom: 12px;
+    color: var(--text-main);
+}
+
+.instruction-card p {
+    color: #666;
+    margin-bottom: 32px;
+    line-height: 1.6;
+}
+
+.btn-start {
+    background: var(--krishi-green);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
+}
+
+.btn-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 200, 83, 0.4);
+}
+
+/* Floating Toolbar */
+.floating-toolbar {
+    position: absolute;
+    top: auto;
+    left: auto;
+    transform: none;
+    background: white;
+    padding: 8px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    from {
+        transform: translateX(-50%) scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
+}
+
+.tool-btn {
+    width: 48px;
+    height: 48px;
+    border: none;
+    background: #f5f5f5;
+    border-radius: 12px;
+    color: #555;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tool-btn:hover {
+    background: #e8f5e9;
+    color: var(--krishi-green);
+}
+
+.tool-btn.active {
+    background: var(--krishi-green);
+    color: white;
+}
+
+.tool-btn.save-btn {
+    color: var(--krishi-green);
+}
+
+.tool-btn.save-btn:hover {
+    background: var(--krishi-green);
+    color: white;
+}
+
+.tool-btn.delete-btn {
+    color: #e74c3c;
+}
+
+.tool-btn.delete-btn:hover {
+    background: #e74c3c;
+    color: white;
+}
+
+.floating-toolbar .divider {
+    width: 1px;
+    height: 24px;
+    background: #e0e0e0;
+    margin: 0 4px;
+}
+
+.toolbar-drag-handle {
+    width: 36px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    cursor: grab;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    border: 1px dashed #e2e8f0;
+}
+
+.toolbar-drag-handle:hover {
+    background: #f8fafc;
+    color: #475569;
+}
+
+.floating-toolbar.dragging {
+    cursor: grabbing;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+
+/* Field Info Panel */
+.field-info {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 500;
+    text-align: center;
+    animation: slideUp 0.3s ease-out;
+}
+
+.field-info .area {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--krishi-green);
+}
+
+.field-info .meta {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .create-field-header .search-container {
+        width: 180px;
+        position: static;
+        transform: none;
+        margin: 0 12px;
+    }
+
+    .instruction-card {
+        margin: 20px;
+        padding: 30px 20px;
+    }
+
+    .floating-toolbar {
+        bottom: 24px;
+        width: 90%;
+        justify-content: space-between;
+        padding: 12px;
+    }
+
+    .tool-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
+}
+
+/* Fix for SweetAlert2 Input Overflow */
+div:where(.swal2-container) input:where(.swal2-input),
+div:where(.swal2-container) .swal2-file,
+div:where(.swal2-container) .swal2-textarea {
+    box-sizing: border-box !important;
+    width: 90% !important;
+    /* Prevent touching edges */
+    margin: 1em auto !important;
+    height: 3em !important;
+}
+
+div:where(.swal2-container) .swal2-popup {
+    box-sizing: border-box !important;
+    padding: 2em !important;
+}
+
+/* Scale bar ka background aur border change karein */
+.leaflet-control-scale-line {
+    background: transparent !important;
+    /* Blue background with transparency */
+    border: 2px solid white !important;
+    /* White border */
+    border-top: none !important;
+    /* Upar ka border hatana (optional) */
+    color: white !important;
+    /* Text ka color */
+    font-size: 12px;
+    font-weight: bold;
+    font-family: 'Arial', sans-serif;
+    padding: 0 5px;
+    text-shadow: 1px 1px 2px black;
+    /* Text ke piche shadow taki clear dikhe */
+    border-radius: 4px;
+    /* Thoda rounded corners */
+}
+
+/* Agar aap chahte hain ki scale ke aas-paas thoda aur gap ho */
+.leaflet-control-scale {
+    margin-bottom: 10px;
+    margin-right: 10px;
+}

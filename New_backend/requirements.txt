@@ -1,0 +1,59 @@
+# ====================================================
+# KrishiZest Backend - Python Requirements
+# Generated for New_backend (Flask + Earth Engine app)
+# ====================================================
+
+# --- Web Framework ---
+Flask==2.3.3
+flask-cors==4.0.0
+Flask-SQLAlchemy==3.1.1
+gunicorn==21.2.0
+
+# --- Authentication & Firebase ---
+firebase-admin==6.5.0
+
+# --- Database ---
+psycopg2-binary==2.9.9
+SQLAlchemy==2.0.23
+
+# --- Google Earth Engine ---
+earthengine-api==0.1.390
+
+# --- Google Generative AI (Gemini) ---
+google-generativeai==0.7.0
+
+# --- Data Processing & Science ---
+numpy==1.26.4
+pandas==2.2.1
+scikit-learn==1.4.1.post1
+jenkspy==0.3.3
+
+# --- Geospatial ---
+shapely==2.0.3
+pyproj==3.6.1
+
+# --- Geocoding ---
+geopy==2.4.1
+
+# --- Image Processing ---
+Pillow==10.2.0
+matplotlib==3.8.3
+
+# --- PDF Generation ---
+reportlab==4.1.0
+
+# --- HTTP Requests ---
+requests==2.31.0
+
+# --- Environment / Utilities ---
+python-dotenv==1.0.1
+
+# --- Serialization (used by sklearn PCA model) ---
+# pickle is part of the Python standard library — no install needed
+
+# ====================================================
+# Notes:
+#  - Install with: pip install -r requirements.txt
+#  - Tested on Python 3.11+
+#  - For production, pin versions with: pip freeze > requirements.txt
+# ====================================================

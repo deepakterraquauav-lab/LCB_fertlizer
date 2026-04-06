@@ -1,0 +1,1181 @@
+krishizest-backend  | [2026-02-21 13:03:16 +0000] [1] [INFO] Starting gunicorn 21.2.0
+krishizest-backend  | [2026-02-21 13:03:16 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+krishizest-backend  | [2026-02-21 13:03:16 +0000] [1] [INFO] Using worker: sync
+krishizest-backend  | [2026-02-21 13:03:16 +0000] [7] [INFO] Booting worker with pid: 7
+krishizest-backend  | [2026-02-21 13:03:17 +0000] [8] [INFO] Booting worker with pid: 8
+krishizest-backend  | [2026-02-21 13:03:17 +0000] [9] [INFO] Booting worker with pid: 9
+krishizest-backend  | [2026-02-21 13:03:17 +0000] [10] [INFO] Booting worker with pid: 10
+krishizest-backend  | Earth Engine initialized successfully.
+krishizest-backend  | Database tables created/verified
+krishizest-backend  | [2026-02-21 13:03:26,371] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:03:26,371] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:03:26,376] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:03:28,867] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:03:28,869] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:03:29,753] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:03:29,754] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:03:29,754] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:03:29,760] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:03:30,188] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:03:30,200] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:03:30,642] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:03:30,643] WARNING - Error calculating dynamic stats: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:03:30,643] WARNING - smart_irrigation_logger - Error calculating dynamic stats: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:03:30,648] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:03:31,099] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:03:31,101] ERROR - smart_irrigation_logger - Tile error: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:03:31,101] ERROR - Tile error: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:04:31,639] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:31,639] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:31,645] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:32,384] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:32,386] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:33,203] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:33,203] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:33,203] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:33,207] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:34,629] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:34,635] INFO - Generating tile for composite period
+krishizest-backend  | Earth Engine initialized successfully.
+krishizest-backend  | Database tables created/verified
+krishizest-backend  | [2026-02-21 13:04:34,635] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:34,641] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:34,644] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:35,624] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:04:35,626] WARNING - smart_irrigation_logger - Error calculating dynamic stats: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  | [2026-02-21 13:04:35,626] WARNING - Error calculating dynamic stats: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:04:35,633] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:04:36,641] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:36,644] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:36,759] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:37,462] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:37,463] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:37,463] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:37,469] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:37,833] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:37,844] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:38,263] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:04:38,265] WARNING - Error calculating dynamic stats: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:04:38,265] WARNING - smart_irrigation_logger - Error calculating dynamic stats: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:04:38,272] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:04:38,723] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:04:38,725] ERROR - smart_irrigation_logger - Tile error: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:04:38,725] ERROR - Tile error: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:04:42,272] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:42,272] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:42,278] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:43,162] INFO - Generating tile for composite period
+krishizest-backend  | Earth Engine initialized successfully.
+krishizest-backend  | Database tables created/verified
+krishizest-backend  | [2026-02-21 13:04:43,162] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:43,168] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:44,356] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:44,359] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:44,975] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:44,979] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:45,204] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:45,204] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:45,204] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:45,210] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | Earth Engine initialized successfully.
+krishizest-backend  | Database tables created/verified
+krishizest-backend  | [2026-02-21 13:04:45,785] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:45,785] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:45,790] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:46,564] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:46,569] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:46,587] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:46,598] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:47,185] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:47,185] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:47,185] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:47,190] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:47,491] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:04:47,492] WARNING - Error calculating dynamic stats: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:04:47,492] WARNING - smart_irrigation_logger - Error calculating dynamic stats: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:04:47,499] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:04:47,548] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:47,557] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:48,554] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:48,554] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:48,554] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:48,560] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:48,831] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:49,943] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:49,956] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:50,790] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:50,796] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:04:50,831] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:50,836] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:51,433] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:51,433] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:51,440] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:51,702] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:52,789] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:52,797] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:04:53,339] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:53,343] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:54,471] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:54,472] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:54,472] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:04:54,479] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:54,913] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:54,925] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:55,026] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:55,851] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:55,856] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:04:57,129] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:57,129] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:04:57,137] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:04:57,894] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:58,433] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:04:58,438] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:00,277] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:00,278] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:05:00,278] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:05:00,285] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:01,661] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:01,668] INFO -   Applying PCA Transformation...
+krishizest-backend  | [2026-02-21 13:05:01,668] INFO - smart_irrigation_logger -   Applying PCA Transformation...
+krishizest-backend  | [2026-02-21 13:05:01,669] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:02,026] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:02,028] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:02,247] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:05:02,247] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:05:02,255] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:03,092] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:03,095] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:03,370] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:03,372] INFO - processors.pca_processor - 🧠 Training NEW dynamic PCA model for 22.9486_78.9943 2026_02...
+krishizest-backend  | [2026-02-21 13:05:03,376] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:03,980] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:03,981] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:05:03,981] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:05:03,985] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:04,978] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:05,423] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:05,432] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:05,837] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:06,220] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:06,226] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:08,184] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:08,193] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:08,362] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:08,369] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:05:09,338] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:10,652] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:10,659] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:12,589] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:12,596] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:13,304] INFO - smart_irrigation_logger - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:05:13,304] INFO - Generating tile for composite period
+krishizest-backend  | [2026-02-21 13:05:13,311] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:15,176] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:15,179] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:15,878] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:15,885] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:16,075] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:16,075] INFO - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:05:16,075] INFO - smart_irrigation_logger - Dynamic NDVI Range: 0.200 - 0.692
+krishizest-backend  | [2026-02-21 13:05:16,081] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:17,489] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:17,500] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:17,778] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:17,781] WARNING - processors.pca_processor - Not enough samples for Dynamic PCA. Fallback to static.
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator PCA from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | [2026-02-21 13:05:17,788] INFO - processors.pca_processor - PCA Model loaded. PC1 Range: -3.00 to 5.00
+krishizest-backend  | [2026-02-21 13:05:17,793] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:18,010] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:05:18,011] WARNING - Error calculating dynamic stats: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:05:18,011] WARNING - smart_irrigation_logger - Error calculating dynamic stats: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:05:18,016] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:05:18,821] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:18,827] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/maps?fields=name&alt=json
+krishizest-backend  | [2026-02-21 13:05:19,375] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:05:19,377] ERROR - smart_irrigation_logger - Tile error: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:05:19,377] ERROR - Tile error: Image.divide: If one image has no bands, the other must also have no bands. Got 0 and 1.
+krishizest-backend  | [2026-02-21 13:05:19,838] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/maps?fields=name&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:24,837] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:25,262] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:25,266] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | DEBUG: get_daily_data payload: {
+krishizest-backend  |   "aoi": {
+krishizest-backend  |     "type": "Feature",
+krishizest-backend  |     "geometry": {
+krishizest-backend  |       "type": "Polygon",
+krishizest-backend  |       "coordinates": [
+krishizest-backend  |         [
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993722,
+krishizest-backend  |             22.948792
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993866,
+krishizest-backend  |             22.948881
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994274,
+krishizest-backend  |             22.948876
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994827,
+krishizest-backend  |             22.948988
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994875,
+krishizest-backend  |             22.94888
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994757,
+krishizest-backend  |             22.948257
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993759,
+krishizest-backend  |             22.948119
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993663,
+krishizest-backend  |             22.948593
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ]
+krishizest-backend  |         ]
+krishizest-backend  |       ]
+krishizest-backend  |     },
+krishizest-backend  |     "properties": {
+krishizest-backend  |       "name": "Field-1",
+krishizest-backend  |       "type": "polygon"
+krishizest-backend  |     }
+krishizest-backend  |   },
+krishizest-backend  |   "start_date": "2026-01-01",
+krishizest-backend  |   "end_date": "2026-02-20",
+krishizest-backend  |   "field_id": "1771652089994"
+krishizest-backend  | }
+krishizest-backend  | DEBUG: Geometry Type: Polygon
+krishizest-backend  | [2026-02-21 13:05:25,850] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:26,268] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:27,142] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:27,143] INFO - Requesting data from 2026-01-01 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:05:27,143] INFO - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:05:27,143] INFO - smart_irrigation_logger - Requesting data from 2026-01-01 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:05:27,143] INFO - smart_irrigation_logger - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:05:27,145] INFO - smart_irrigation_logger - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:05:27,145] INFO - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:05:27,148] INFO - smart_irrigation_logger - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:05:27,148] INFO - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:05:27,149] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:27,495] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:27,500] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:28,556] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:28,557] INFO - smart_irrigation_logger - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:05:28,557] INFO - smart_irrigation_logger - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:05:28,557] INFO - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:05:28,557] INFO - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:05:28,559] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:29,938] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:29,942] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:31,527] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:31,529] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:31,996] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:31,997] INFO - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:05:31,997] INFO - smart_irrigation_logger - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator PCA from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | [2026-02-21 13:05:32,562] INFO - processors.pca_processor - PCA Model loaded. PC1 Range: -3.00 to 5.00
+krishizest-backend  | [2026-02-21 13:05:32,585] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:34,174] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:05:34,174] ERROR - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:05:34,174] ERROR - smart_irrigation_logger - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:05:34,187] ERROR - smart_irrigation_logger - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  | [2026-02-21 13:05:34,187] ERROR - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'ETo':
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | Expected type: Byte<4, 4>.
+krishizest-backend  |   Actual type: Float<-409.6, 409.58750000000003>.
+krishizest-backend  |      Image ID: null
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | DEBUG: get_daily_data payload: {
+krishizest-backend  |   "aoi": {
+krishizest-backend  |     "type": "Feature",
+krishizest-backend  |     "geometry": {
+krishizest-backend  |       "type": "Polygon",
+krishizest-backend  |       "coordinates": [
+krishizest-backend  |         [
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993722,
+krishizest-backend  |             22.948792
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993866,
+krishizest-backend  |             22.948881
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994274,
+krishizest-backend  |             22.948876
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994827,
+krishizest-backend  |             22.948988
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994875,
+krishizest-backend  |             22.94888
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994757,
+krishizest-backend  |             22.948257
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993759,
+krishizest-backend  |             22.948119
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993663,
+krishizest-backend  |             22.948593
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ]
+krishizest-backend  |         ]
+krishizest-backend  |       ]
+krishizest-backend  |     },
+krishizest-backend  |     "properties": {
+krishizest-backend  |       "name": "Field-1",
+krishizest-backend  |       "type": "polygon"
+krishizest-backend  |     }
+krishizest-backend  |   },
+krishizest-backend  |   "start_date": "2026-01-01",
+krishizest-backend  |   "end_date": "2026-02-20",
+krishizest-backend  |   "field_id": "1771652089994"
+krishizest-backend  | }
+krishizest-backend  | DEBUG: Geometry Type: Polygon
+krishizest-backend  | [2026-02-21 13:05:42,490] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:43,806] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:43,807] INFO - Requesting data from 2026-01-01 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:05:43,807] INFO - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:05:43,807] INFO - smart_irrigation_logger - Requesting data from 2026-01-01 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:05:43,807] INFO - smart_irrigation_logger - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:05:43,810] INFO - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:05:43,810] INFO - smart_irrigation_logger - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:05:43,812] INFO - smart_irrigation_logger - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:05:43,812] INFO - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:05:43,814] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:45,136] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:45,141] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:47,132] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:47,132] INFO - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:05:47,132] INFO - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:05:47,132] INFO - smart_irrigation_logger - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:05:47,132] INFO - smart_irrigation_logger - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:05:47,134] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:48,524] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:48,527] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:49,932] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:49,935] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:50,346] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:05:50,347] INFO - smart_irrigation_logger - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:05:50,347] INFO - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:05:50,371] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:05:53,234] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:05:53,235] ERROR - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:05:53,235] ERROR - smart_irrigation_logger - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:05:53,237] ERROR - smart_irrigation_logger - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | [2026-02-21 13:05:53,237] ERROR - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260120
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | [2026-02-21 13:06:22,381] DEBUG - urllib3.util.retry - Converted retries value: 3 -> Retry(total=3, connect=None, read=None, redirect=None, status=None)
+krishizest-backend  | [2026-02-21 13:06:22,381] WARNING - Token verification warning: Firebase ID token has incorrect "aud" (audience) claim. Expected "karshizest" but got "mapzest-459c9". Make sure the ID token comes from the same Firebase project as the service account used to authenticate this SDK. See https://firebase.google.com/docs/auth/admin/verify-id-tokens for details on how to retrieve ID token.. Attempting manual decode.
+krishizest-backend  | [2026-02-21 13:06:22,381] WARNING - smart_irrigation_logger - Token verification warning: Firebase ID token has incorrect "aud" (audience) claim. Expected "karshizest" but got "mapzest-459c9". Make sure the ID token comes from the same Firebase project as the service account used to authenticate this SDK. See https://firebase.google.com/docs/auth/admin/verify-id-tokens for details on how to retrieve ID token.. Attempting manual decode.
+krishizest-backend  | DEBUG: get_daily_data payload: {
+krishizest-backend  |   "aoi": {
+krishizest-backend  |     "type": "Feature",
+krishizest-backend  |     "geometry": {
+krishizest-backend  |       "type": "Polygon",
+krishizest-backend  |       "coordinates": [
+krishizest-backend  |         [
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993722,
+krishizest-backend  |             22.948792
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993866,
+krishizest-backend  |             22.948881
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994274,
+krishizest-backend  |             22.948876
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994827,
+krishizest-backend  |             22.948988
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994875,
+krishizest-backend  |             22.94888
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994757,
+krishizest-backend  |             22.948257
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993759,
+krishizest-backend  |             22.948119
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993663,
+krishizest-backend  |             22.948593
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ]
+krishizest-backend  |         ]
+krishizest-backend  |       ]
+krishizest-backend  |     },
+krishizest-backend  |     "properties": {
+krishizest-backend  |       "name": "Field-1",
+krishizest-backend  |       "type": "polygon"
+krishizest-backend  |     }
+krishizest-backend  |   },
+krishizest-backend  |   "start_date": "2026-01-02",
+krishizest-backend  |   "end_date": "2026-02-20",
+krishizest-backend  |   "field_id": "1771652089994"
+krishizest-backend  | }
+krishizest-backend  | DEBUG: Geometry Type: Polygon
+krishizest-backend  | [2026-02-21 13:06:31,576] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:31,893] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:06:31,894] INFO - Requesting data from 2026-01-02 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:06:31,894] INFO - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:06:31,894] INFO - smart_irrigation_logger - Requesting data from 2026-01-02 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:06:31,894] INFO - smart_irrigation_logger - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:06:31,896] INFO - smart_irrigation_logger - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:06:31,896] INFO - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:06:31,899] INFO - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:06:31,899] INFO - smart_irrigation_logger - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:06:31,900] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:32,285] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:06:32,290] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:34,366] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:06:34,367] INFO - smart_irrigation_logger - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:06:34,367] INFO - smart_irrigation_logger - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:06:34,367] INFO - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:06:34,367] INFO - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:06:34,369] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:34,794] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:06:34,801] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:36,223] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:06:36,224] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:37,614] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:06:37,615] INFO - smart_irrigation_logger - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:06:37,615] INFO - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator PCA from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | [2026-02-21 13:06:38,363] INFO - processors.pca_processor - PCA Model loaded. PC1 Range: -3.00 to 5.00
+krishizest-backend  | [2026-02-21 13:06:38,384] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:06:39,951] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:06:39,953] ERROR - smart_irrigation_logger - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  | [2026-02-21 13:06:39,953] ERROR - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:06:39,962] ERROR - smart_irrigation_logger - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | [2026-02-21 13:06:39,962] ERROR - Traceback (most recent call last):
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | DEBUG: get_daily_data payload: {
+krishizest-backend  |   "aoi": {
+krishizest-backend  |     "type": "Feature",
+krishizest-backend  |     "geometry": {
+krishizest-backend  |       "type": "Polygon",
+krishizest-backend  |       "coordinates": [
+krishizest-backend  |         [
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993722,
+krishizest-backend  |             22.948792
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993866,
+krishizest-backend  |             22.948881
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994274,
+krishizest-backend  |             22.948876
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994827,
+krishizest-backend  |             22.948988
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994875,
+krishizest-backend  |             22.94888
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994757,
+krishizest-backend  |             22.948257
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993759,
+krishizest-backend  |             22.948119
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993663,
+krishizest-backend  |             22.948593
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ]
+krishizest-backend  |         ]
+krishizest-backend  |       ]
+krishizest-backend  |     },
+krishizest-backend  |     "properties": {
+krishizest-backend  |       "name": "Field-1",
+krishizest-backend  |       "type": "polygon"
+krishizest-backend  |     }
+krishizest-backend  |   },
+krishizest-backend  |   "start_date": "2026-01-02",
+krishizest-backend  |   "end_date": "2026-02-20",
+krishizest-backend  |   "field_id": "1771652089994"
+krishizest-backend  | }
+krishizest-backend  | DEBUG: Geometry Type: Polygon
+krishizest-backend  | [2026-02-21 13:09:23,724] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:09:24,048] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:09:24,048] INFO - smart_irrigation_logger - Requesting data from 2026-01-02 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:09:24,048] INFO - Requesting data from 2026-01-02 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:09:24,048] INFO - smart_irrigation_logger - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:09:24,048] INFO - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:09:24,051] INFO - smart_irrigation_logger - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:09:24,051] INFO - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:09:24,053] INFO - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:09:24,053] INFO - smart_irrigation_logger - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:09:24,055] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:09:25,459] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:09:25,465] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:09:58,654] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:09:58,655] INFO - smart_irrigation_logger - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:09:58,655] INFO - smart_irrigation_logger - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:09:58,655] INFO - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:09:58,655] INFO - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:09:58,658] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:10:00,080] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:10:00,087] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:10:00,603] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:10:00,609] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:10:02,015] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:10:02,016] INFO - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:10:02,016] INFO - smart_irrigation_logger - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:10:02,042] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:10:04,796] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:10:04,798] ERROR - smart_irrigation_logger - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:10:04,798] ERROR - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:10:04,802] ERROR - Traceback (most recent call last):
+krishizest-backend  | [2026-02-21 13:10:04,802] ERROR - smart_irrigation_logger - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260115
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | [2026-02-21 13:10:50 +0000] [1] [INFO] Handling signal: term
+krishizest-backend  | [2026-02-21 13:10:50 +0000] [7] [INFO] Worker exiting (pid: 7)
+krishizest-backend  | [2026-02-21 13:10:50 +0000] [10] [INFO] Worker exiting (pid: 10)
+krishizest-backend  | [2026-02-21 13:10:50 +0000] [8] [INFO] Worker exiting (pid: 8)
+krishizest-backend  | [2026-02-21 13:10:50 +0000] [9] [INFO] Worker exiting (pid: 9)
+krishizest-backend  | [2026-02-21 13:10:50 +0000] [1] [INFO] Shutting down: Master
+krishizest-backend  | [2026-02-21 13:10:57 +0000] [1] [INFO] Starting gunicorn 21.2.0
+krishizest-backend  | [2026-02-21 13:10:57 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+krishizest-backend  | [2026-02-21 13:10:57 +0000] [1] [INFO] Using worker: sync
+krishizest-backend  | [2026-02-21 13:10:57 +0000] [7] [INFO] Booting worker with pid: 7
+krishizest-backend  | [2026-02-21 13:10:58 +0000] [8] [INFO] Booting worker with pid: 8
+krishizest-backend  | [2026-02-21 13:10:58 +0000] [9] [INFO] Booting worker with pid: 9
+krishizest-backend  | [2026-02-21 13:10:58 +0000] [10] [INFO] Booting worker with pid: 10
+krishizest-backend  | Earth Engine initialized successfully.
+krishizest-backend  | Database tables created/verified
+krishizest-backend  | DEBUG: get_daily_data payload: {
+krishizest-backend  |   "aoi": {
+krishizest-backend  |     "type": "Feature",
+krishizest-backend  |     "geometry": {
+krishizest-backend  |       "type": "Polygon",
+krishizest-backend  |       "coordinates": [
+krishizest-backend  |         [
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993722,
+krishizest-backend  |             22.948792
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993866,
+krishizest-backend  |             22.948881
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994274,
+krishizest-backend  |             22.948876
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994827,
+krishizest-backend  |             22.948988
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994875,
+krishizest-backend  |             22.94888
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.994757,
+krishizest-backend  |             22.948257
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993759,
+krishizest-backend  |             22.948119
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993663,
+krishizest-backend  |             22.948593
+krishizest-backend  |           ],
+krishizest-backend  |           [
+krishizest-backend  |             78.993727,
+krishizest-backend  |             22.948623
+krishizest-backend  |           ]
+krishizest-backend  |         ]
+krishizest-backend  |       ]
+krishizest-backend  |     },
+krishizest-backend  |     "properties": {
+krishizest-backend  |       "name": "Field-1",
+krishizest-backend  |       "type": "polygon"
+krishizest-backend  |     }
+krishizest-backend  |   },
+krishizest-backend  |   "start_date": "2026-01-02",
+krishizest-backend  |   "end_date": "2026-02-20",
+krishizest-backend  |   "field_id": "1771652089994"
+krishizest-backend  | }
+krishizest-backend  | DEBUG: Geometry Type: Polygon
+krishizest-backend  | [2026-02-21 13:11:08,571] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:09,910] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:11:09,911] INFO - smart_irrigation_logger - Requesting data from 2026-01-02 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:11:09,911] INFO - Requesting data from 2026-01-02 to 2026-02-20. Masking: False
+krishizest-backend  | [2026-02-21 13:11:09,911] INFO - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:11:09,911] INFO - smart_irrigation_logger - Fetching Landsat collection...
+krishizest-backend  | [2026-02-21 13:11:09,914] INFO - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:11:09,914] INFO - smart_irrigation_logger - Fetching Sentinel-2 collection...
+krishizest-backend  | [2026-02-21 13:11:09,916] INFO - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:11:09,916] INFO - smart_irrigation_logger - Fetching Sentinel-1 Soil Moisture...
+krishizest-backend  | [2026-02-21 13:11:09,917] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:10,311] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:11:10,318] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:11,460] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:11:11,461] INFO - smart_irrigation_logger - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:11:11,461] INFO - smart_irrigation_logger - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:11:11,461] INFO - Found 9 unique dates total.
+krishizest-backend  | [2026-02-21 13:11:11,461] INFO - Calculating seasonal NDVI thresholds...
+krishizest-backend  | [2026-02-21 13:11:11,464] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:11,855] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:11:11,859] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:13,289] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:11:13,292] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:14,914] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 200 None
+krishizest-backend  | [2026-02-21 13:11:14,915] INFO - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | [2026-02-21 13:11:14,915] INFO - smart_irrigation_logger - NDVI Range: 0.2 - 0.617039972230008
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | /usr/local/lib/python3.11/site-packages/sklearn/base.py:376: InconsistentVersionWarning: Trying to unpickle estimator PCA from version 1.7.2 when using version 1.4.1.post1. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+krishizest-backend  | https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+krishizest-backend  |   warnings.warn(
+krishizest-backend  | [2026-02-21 13:11:15,461] INFO - processors.pca_processor - PCA Model loaded. PC1 Range: -3.00 to 5.00
+krishizest-backend  | [2026-02-21 13:11:15,484] DEBUG - googleapiclient.discovery - URL being requested: POST https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json
+krishizest-backend  | [2026-02-21 13:11:18,031] DEBUG - urllib3.connectionpool - https://earthengine.googleapis.com:443 "POST /v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json HTTP/1.1" 400 None
+krishizest-backend  | [2026-02-21 13:11:18,032] ERROR - smart_irrigation_logger - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:11:18,032] ERROR - EE getInfo failed: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | [2026-02-21 13:11:18,038] ERROR - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 
+krishizest-backend  | [2026-02-21 13:11:18,038] ERROR - smart_irrigation_logger - Traceback (most recent call last):
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 402, in _execute_cloud_call
+krishizest-backend  |     return call.execute(num_retries=num_retries)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/_helpers.py", line 130, in positional_wrapper
+krishizest-backend  |     return wrapped(*args, **kwargs)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/googleapiclient/http.py", line 938, in execute
+krishizest-backend  |     raise HttpError(resp, content, uri=self.uri)
+krishizest-backend  | googleapiclient.errors.HttpError: <HttpError 400 when requesting https://earthengine.googleapis.com/v1/projects/earthengine-legacy/value:compute?prettyPrint=false&alt=json returned "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.". Details: "Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.">
+krishizest-backend  | 
+krishizest-backend  | During handling of the above exception, another exception occurred:
+krishizest-backend  | 
+krishizest-backend  | Traceback (most recent call last):
+krishizest-backend  |   File "/app/New_backend/app.py", line 357, in get_daily_data
+krishizest-backend  |     raw = daily_collection.getInfo().get('features', [])
+krishizest-backend  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/collection.py", line 159, in getInfo
+krishizest-backend  |     return super().getInfo()
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/computedobject.py", line 107, in getInfo
+krishizest-backend  |     return data.computeValue(self)
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 1101, in computeValue
+krishizest-backend  |     return _execute_cloud_call(
+krishizest-backend  |            ^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  |   File "/usr/local/lib/python3.11/site-packages/ee/data.py", line 404, in _execute_cloud_call
+krishizest-backend  |     raise _translate_cloud_exception(e)  # pylint: disable=raise-missing-from
+krishizest-backend  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+krishizest-backend  | ee.ee_exception.EEException: Expected a homogeneous image collection, but an image with an incompatible band was encountered. Mismatched type for band 'Rain':
+krishizest-backend  | Expected type: MaskOnly.
+krishizest-backend  |   Actual type: Float.
+krishizest-backend  |      Image ID: 20260110
+krishizest-backend  | This band might require an explicit cast.
+krishizest-backend  | 

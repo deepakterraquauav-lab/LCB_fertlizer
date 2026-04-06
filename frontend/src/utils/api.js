@@ -257,8 +257,8 @@ export async function searchLocation(query) {
         }
 
         const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1&countrycodes=in`
-        );
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+
 
         if (!response.ok) {
             throw new Error('Search failed');

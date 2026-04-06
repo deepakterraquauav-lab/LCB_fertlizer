@@ -52,7 +52,32 @@ function Header({ onLocationSelect }) {
                 setShowResults(true);
             }
 
-            const results = await searchLocation(query);
+            const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
+            const match = query.match(coordRegex);
+
+            let results = [];
+
+            if (match) {
+                const lat = parseFloat(match[1]);
+                const lon = parseFloat(match[2]);
+
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                    // Agar exact coordinate hai, toh fake result banake direct return kar do (API bypass)
+                    results = [{
+                        lat: lat.toString(),
+                        lon: lon.toString(),
+                        display_name: `${lat}, ${lon}` // Dropdown mein exactly yahi dikhega
+                    }];
+                }
+            }
+            if (results.length === 0) {
+                results = await searchLocation(query);
+            }
+
+            // Agar upar coordinates nahi mile, tabhi original API call chalegi
+            if (results.length === 0) {
+                results = await searchLocation(query);
+            }
 
             if (results.length === 0) {
                 setSearchResults([{ noResults: true }]);

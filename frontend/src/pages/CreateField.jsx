@@ -473,20 +473,20 @@ function CreateField() {
 
         try {
             // Check for exact coordinates
-            const coordRegex = /^\s*(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)\s*$/;
+            const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
             const match = searchQuery.match(coordRegex);
 
             let locationData = null;
 
             if (match) {
                 const lat = parseFloat(match[1]);
-                const lon = parseFloat(match[3]);
+                const lon = parseFloat(match[2]);
 
                 if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
                     locationData = {
-                        lat: lat.toString(),
-                        lon: lon.toString(),
-                        display_name: `Coordinates: ${lat}, ${lon}`
+                        lat: lat,
+                        lon: lon,
+                        display_name: `Exact Coordinates: ${lat}, ${lon}`
                     };
                 }
             }
@@ -497,14 +497,16 @@ function CreateField() {
                 const data = await response.json();
 
                 if (data && data.length > 0) {
-                    const { lat, lon, display_name } = data[0];
-                    locationData = { lat, lon, display_name };
+                    locationData = {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon),
+                        display_name: data[0].display_name
+                    };
                 }
             }
 
             if (locationData) {
-                const { lat, lon, display_name } = locationData;
-                const latLng = [parseFloat(lat), parseFloat(lon)];
+                const latLng = [locationData.lat, locationData.lon];
 
                 // Clear existing marker
                 if (searchMarkerRef.current) {
@@ -513,10 +515,23 @@ function CreateField() {
 
                 // Add new marker
                 const marker = L.marker(latLng).addTo(mapInstanceRef.current);
-                marker.bindPopup(display_name).openPopup();
+                marker.bindPopup(locationData.display_name).openPopup();
                 searchMarkerRef.current = marker;
 
-                mapInstanceRef.current?.flyTo(latLng, 16);
+                // flyTo ki jagah setView use kiya. Ye bina animation ke instantly zoom karta hai (100% reliable)
+                mapInstanceRef.current.flyTo(latLng, 18, {
+                    duration: 3,       // 3 seconds tak animation chalega (Isse slowly feel aayega)
+                    easeLinearity: 0.25 // Animation kitna "smooth" start aur end hoga
+                });
+
+                // Map ko force-refresh karne ke liye ek chhota sa delay
+                // Ye ensure karega ki zoom hone ke baad map gray na ho aur tiles properly load ho jayein
+                setTimeout(() => {
+                    if (mapInstanceRef.current) {
+                        mapInstanceRef.current.invalidateSize();
+                    }
+                }, 100);
+
             } else {
                 Swal.fire({
                     icon: 'error',

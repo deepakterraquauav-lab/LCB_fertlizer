@@ -264,11 +264,11 @@ const layerLegends = {
         title: 'Chlorophyll Zones (CLRe)',
         continuous: true,
         items: [
-            { color: '#2e6b2d', label: 'Rich' },
+            { color: '#2e6b2d', label: 'Highest' },
             { color: '#4d9c44', label: 'High' },
             { color: '#7bbf6a', label: 'Moderate' },
             { color: '#a8d5a2', label: 'Low' },
-            { color: '#d0f0c0', label: 'Deficient' },
+            { color: '#d0f0c0', label: 'Lowest' },
         ],
     },
     // RGB/TCC layers don't need a legend - they're visual representations

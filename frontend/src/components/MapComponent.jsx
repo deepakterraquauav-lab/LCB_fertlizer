@@ -5,6 +5,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
+import leafletImage from 'leaflet-image';
+import html2canvas from 'html2canvas';
 import { useApp } from '../context/AppContext';
 import { t } from '../utils/translations';
 import Swal from 'sweetalert2';
@@ -55,21 +57,24 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
         const baseMaps = {
             Satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 18,
-                attribution: '&copy; Esri'
+                attribution: '&copy; Esri',
+                crossOrigin: true,
             }),
             Street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 24,
-
-                attribution: '&copy; OpenStreetMap contributors'
+                attribution: '&copy; OpenStreetMap contributors',
+                crossOrigin: true,
             }),
             Topographic: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
                 maxZoom: 24,
-                attribution: '&copy; OpenTopoMap contributors'
+                attribution: '&copy; OpenTopoMap contributors',
+                crossOrigin: true,
             }),
             Hybrid: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
                 maxZoom: 24,
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                attribution: '&copy; Google Maps'
+                attribution: '&copy; Google Maps',
+                crossOrigin: true,
             }),
         };
 
@@ -602,6 +607,69 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
         };
     }, [drawnAOI, handleFitBounds]);
 
+    // Capture map screenshot as base64 PNG (clean – no UI controls)
+    const captureMapScreenshot = useCallback(() => {
+        return new Promise((resolve, reject) => {
+            const map = mapInstanceRef.current;
+            if (!map) { reject(new Error('No map instance')); return; }
+
+            // Fit to AOI so the field fills the frame with good padding
+            if (drawnAOI) {
+                try {
+                    const layer = L.geoJSON(drawnAOI);
+                    const bounds = layer.getBounds();
+                    if (bounds.isValid()) {
+                        map.fitBounds(bounds, { padding: [50, 50], animate: false });
+                    }
+                } catch(e) { /* ignore */ }
+            }
+
+            // Wait for tiles to render after fitBounds
+            setTimeout(() => {
+                const mapEl = map.getContainer();
+
+                // --- Hide all Leaflet UI controls before screenshot ---
+                const controls = mapEl.querySelectorAll('.leaflet-control-container');
+                const hiddenEls = [];
+                controls.forEach(el => {
+                    hiddenEls.push({ el, display: el.style.display });
+                    el.style.display = 'none';
+                });
+
+                const doRestore = () => {
+                    hiddenEls.forEach(({ el, display }) => { el.style.display = display; });
+                };
+
+                // Primary: html2canvas
+                html2canvas(mapEl, {
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    scale: 1.5,
+                    ignoreElements: (el) => {
+                        // Also ignore any overlaid panels / sidebars leaking into the map
+                        return el.classList && (
+                            el.classList.contains('leaflet-control-container') ||
+                            el.classList.contains('spinner-overlay')
+                        );
+                    },
+                }).then(canvas => {
+                    doRestore();
+                    try { resolve(canvas.toDataURL('image/png')); }
+                    catch(e) { reject(e); }
+                }).catch(() => {
+                    doRestore();
+                    // Fallback: leaflet-image (tiles only, no UI chrome anyway)
+                    leafletImage(map, (err2, canvas2) => {
+                        if (err2) { reject(err2); return; }
+                        try { resolve(canvas2.toDataURL('image/png')); }
+                        catch(e2) { reject(e2); }
+                    });
+                });
+            }, 1800); // slightly longer delay to ensure all tiles are rendered
+        });
+    }, [drawnAOI]);
+
     // Expose functions to parent
     useEffect(() => {
         window.mapFunctions = {
@@ -616,10 +684,10 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
             saveEdits: handleSaveEdits,
             deleteShapes: handleDeleteShapes,
             addOverlayLayer,
-            removeOverlayLayer
-
+            removeOverlayLayer,
+            captureMapScreenshot,
         };
-    }, [addTileLayer, clearAllLayers, centerOnLocation, handleDrawPolygon, handleDrawRectangle, handleEditShapes, handleSaveEdits, handleDeleteShapes]);
+    }, [addTileLayer, clearAllLayers, centerOnLocation, handleDrawPolygon, handleDrawRectangle, handleEditShapes, handleSaveEdits, handleDeleteShapes, captureMapScreenshot]);
 
     return (
         <div className={`map-container ${isRightPanelOpen ? 'right-panel-open' : ''}`}>

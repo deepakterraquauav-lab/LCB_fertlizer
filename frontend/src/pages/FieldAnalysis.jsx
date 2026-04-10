@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+﻿import { useCallback, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AppProvider, useApp } from '../context/AppContext';
 import Header from '../components/Header';
@@ -174,6 +174,7 @@ function AppContent() {
               Swal.showLoading();
             }
           });
+
 
           // Try backend first, fallback to localStorage
           let field = null;
@@ -814,6 +815,17 @@ function AppContent() {
           console.warn("Could not fetch irrigation calendar for report:", e);
         }
       }
+      // Capture current map view (satellite + AOI outline) as screenshot
+      let mapScreenshot = null;
+      try {
+        if (window.mapFunctions && window.mapFunctions.captureMapScreenshot) {
+          mapScreenshot = await window.mapFunctions.captureMapScreenshot();
+          console.log('Map screenshot captured for report');
+        }
+      } catch (screenshotErr) {
+        console.warn('Could not capture map screenshot:', screenshotErr);
+      }
+
       const computedMetrics = calculateMetrics(chartData);
       const reportPayload = {
         aoi: drawnAOI,
@@ -827,6 +839,7 @@ function AppContent() {
         crop_name: 'General Crop',
         area_ha: 0,
         location: '',
+        map_screenshot: mapScreenshot,
       };
       const blob = await generateReport(reportPayload);
       const url = window.URL.createObjectURL(blob);

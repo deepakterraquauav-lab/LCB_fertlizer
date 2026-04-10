@@ -203,6 +203,8 @@ def crop_to_content(img: PILImage.Image, padding: int = 30) -> PILImage.Image:
         return img
 
 
+
+
 def process_map_image(image_buffer: BytesIO, target_width: int = 1600) -> BytesIO:
     """
     Standardizes map images: 
@@ -3192,6 +3194,115 @@ Please write a 5–7 sentence continuous summary that:
     fallback_corr = get_corr(c.get('LAI_vs_CIre', {}))
     return f"<b>Field Intelligence Summary ({start_date} to {end_date})</b><br/>Fertilizer response analysis complete. Correlation between canopy density (LAI) and chlorophyll (CIre) is {fallback_corr}. Please configure an API key for full AI synthesis."
 
+def create_perfect_context_map(aoi, zoom=18, padding=150):
+    """
+    Generate a 100% mathematically accurate context map directly on the backend using Satellite maps.
+    """
+    try:
+        # 1. Extract coordinates and find bounding box
+        coords_list = []
+        geom_type = aoi.get('geometry', {}).get('type')
+        coords = aoi.get('geometry', {}).get('coordinates', [])
+        
+        if geom_type == 'Polygon':
+            for ring in coords:
+                coords_list.extend(ring)
+        elif geom_type == 'MultiPolygon':
+            for poly in coords:
+                for ring in poly:
+                    coords_list.extend(ring)
+        else:
+            return None # Fallback if unknown
+            
+        if not coords_list:
+            return None
+            
+        lons = [pt[0] for pt in coords_list]
+        lats = [pt[1] for pt in coords_list]
+        min_lon, max_lon = min(lons), max(lons)
+        min_lat, max_lat = min(lats), max(lats)
+        
+        # 2. Determine required XYZ tiles
+        min_x, min_y = lonlat_to_tile_xy(min_lon, max_lat, zoom)
+        max_x, max_y = lonlat_to_tile_xy(max_lon, min_lat, zoom)
+        
+        tile_min_x = int(math.floor(min_x))
+        tile_max_x = int(math.floor(max_x))
+        tile_min_y = int(math.floor(min_y))
+        tile_max_y = int(math.floor(max_y))
+        
+        # Calculate canvas size
+        cols = tile_max_x - tile_min_x + 1
+        rows = tile_max_y - tile_min_y + 1
+        
+        canvas_w = cols * 256
+        canvas_h = rows * 256
+        
+        # Stitch canvas
+        canvas = PILImage.new('RGB', (canvas_w, canvas_h), (255, 255, 255))
+        
+        headers = {'User-Agent': 'MapZest-ReportGenerator/1.0'}
+        for tx in range(tile_min_x, tile_max_x + 1):
+            for ty in range(tile_min_y, tile_max_y + 1):
+                url = f"https://mt1.google.com/vt/lyrs=s&x={tx}&y={ty}&z={zoom}"
+                try:
+                    r = requests.get(url, headers=headers, timeout=10)
+                    if r.status_code == 200:
+                        tile_img = PILImage.open(io.BytesIO(r.content)).convert('RGB')
+                        px = (tx - tile_min_x) * 256
+                        py = (ty - tile_min_y) * 256
+                        canvas.paste(tile_img, (px, py))
+                except Exception as e:
+                    logger.warning(f"Failed to fetch tile {url}: {e}")
+                    
+        # 3. Draw Polygons
+        draw = ImageDraw.Draw(canvas)
+        
+        all_px_x = []
+        all_px_y = []
+        
+        def process_ring(ring):
+            px_pts = []
+            for pt in ring:
+                tx_pt, ty_pt = lonlat_to_tile_xy(pt[0], pt[1], zoom)
+                px = int((tx_pt - tile_min_x) * 256)
+                py = int((ty_pt - tile_min_y) * 256)
+                px_pts.append((px, py))
+                all_px_x.append(px)
+                all_px_y.append(py)
+            return px_pts
+            
+        def draw_ring(ring):
+            px_pts = process_ring(ring)
+            if px_pts:
+                pts = px_pts + [px_pts[0]] # Close the ring
+                draw.line(pts, fill='#006400', width=8) # Dark Green thick
+                draw.line(pts, fill='#90EE90', width=4) # Light Green thin center
+
+        if geom_type == 'Polygon':
+            for ring in coords:
+                draw_ring(ring)
+        elif geom_type == 'MultiPolygon':
+            for poly in coords:
+                for ring in poly:
+                    draw_ring(ring)
+
+        # Crop tightly
+        if all_px_x and all_px_y:
+            c_min_x = max(0, min(all_px_x) - padding)
+            c_min_y = max(0, min(all_px_y) - padding)
+            c_max_x = min(canvas_w, max(all_px_x) + padding)
+            c_max_y = min(canvas_h, max(all_px_y) + padding)
+            canvas = canvas.crop((c_min_x, c_min_y, c_max_x, c_max_y))
+            
+        buf = io.BytesIO()
+        canvas.save(buf, format='PNG')
+        buf.seek(0)
+        return buf
+    except Exception as e:
+        logger.error(f"Error creating perfect context map: {e}", exc_info=True)
+        return None
+
 def generate_report_response(payload: dict):
     """Build and return the 2-page PDF report as a Flask response."""
 
@@ -3225,12 +3336,12 @@ def generate_report_response(payload: dict):
         except Exception:
             location_text = None
 
-    start_date   = payload.get("start_date", "")
-    end_date     = payload.get("end_date", "")
-    metrics      = payload.get("metrics") or {}
-    series       = payload.get("series") or []
-    backend_url  = payload.get("backend_url") or "http://localhost:6000"
-    logo_path    = get_logo_path(payload.get("logo_path"))
+    start_date      = payload.get("start_date", "")
+    end_date        = payload.get("end_date", "")
+    metrics         = payload.get("metrics") or {}
+    series          = payload.get("series") or []
+    backend_url     = payload.get("backend_url") or "http://localhost:6000"
+    logo_path       = get_logo_path(payload.get("logo_path"))
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -3399,6 +3510,42 @@ def generate_report_response(payload: dict):
 
         story.append(Spacer(1, 16))
 
+    # ══════════════════════════════════════════════════════════════════
+    # AOI Map Screenshot (perfect context map generated on backend)
+    # ══════════════════════════════════════════════════════════════════
+    if aoi:
+        try:
+            map_buf = create_perfect_context_map(aoi, zoom=18, padding=150)
+            if map_buf:
+                pil_shot = PILImage.open(map_buf)
+                iw, ih = pil_shot.size
+                
+                max_w = W * 0.65
+                max_h = 85 * mm
+                
+                scale = min(max_w / iw, max_h / ih)
+                draw_w = iw * scale
+                draw_h = ih * scale
+                
+                map_buf.seek(0)
+                shot_img = Image(map_buf, width=draw_w, height=draw_h)
+
+                story.append(Paragraph("Area of Interest Map", ParagraphStyle("AOIMapTitle", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=8, alignment=1)))
+                story.append(Paragraph(
+                    "<i>Geographically aligned view showing the field boundary.</i>",
+                    ParagraphStyle("AOICaption", fontName="Helvetica-Oblique", fontSize=8, textColor=colors.grey, spaceAfter=8, alignment=1)
+                ))
+
+                shot_table = Table([[shot_img]], colWidths=[W])
+                shot_table.setStyle(TableStyle([
+                    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ]))
+                story.append(shot_table)
+                story.append(Spacer(1, 14))
+                logger.info("Perfect context map generated and embedded in PDF.")
+        except Exception as e:
+            logger.warning(f"Could not embed perfect context map: {e}")
 
     # ══════════════════════════════════════════════════════════════════
     # Side-by-Side Map & Chart Layout (Auto-paginating)

@@ -621,7 +621,7 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
                     if (bounds.isValid()) {
                         map.fitBounds(bounds, { padding: [50, 50], animate: false });
                     }
-                } catch(e) { /* ignore */ }
+                } catch (e) { /* ignore */ }
             }
 
             // Wait for tiles to render after fitBounds
@@ -656,14 +656,14 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
                 }).then(canvas => {
                     doRestore();
                     try { resolve(canvas.toDataURL('image/png')); }
-                    catch(e) { reject(e); }
+                    catch (e) { reject(e); }
                 }).catch(() => {
                     doRestore();
                     // Fallback: leaflet-image (tiles only, no UI chrome anyway)
                     leafletImage(map, (err2, canvas2) => {
                         if (err2) { reject(err2); return; }
                         try { resolve(canvas2.toDataURL('image/png')); }
-                        catch(e2) { reject(e2); }
+                        catch (e2) { reject(e2); }
                     });
                 });
             }, 1800); // slightly longer delay to ensure all tiles are rendered

@@ -3017,7 +3017,7 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
     from datetime import datetime as _dt
     import numpy as np
 
-    fig, ax = plt.subplots(figsize=(4.5, 3.0), dpi=140)
+    fig, ax = plt.subplots(figsize=(5.0, 2.3), dpi=140)
     ax.set_facecolor('#FAFAFA')
     fig.patch.set_facecolor('white')
 
@@ -3347,11 +3347,10 @@ def generate_report_response(payload: dict):
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=18 * mm,
-        leftMargin=18 * mm,
-        # Slightly smaller top margin so content sits closer to the top border
-        topMargin=16 * mm,
-        bottomMargin=18 * mm,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
     )
 
     styles  = getSampleStyleSheet()
@@ -3405,7 +3404,7 @@ def generate_report_response(payload: dict):
     ]))
     story.append(hdr_table)
     # Slightly reduce gap under header to reclaim vertical space
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("Field Intelligence Analysis", ParagraphStyle("SumTitle", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=6)))
 
@@ -3427,7 +3426,7 @@ def generate_report_response(payload: dict):
     ai_summary = generate_field_intelligence_summary(deep_stats, start_date, end_date, crop_name)
     for block in ai_summary.split("\n\n"):
         story.append(Paragraph(sanitize_html_for_reportlab(block), normal))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     # Only show the 0–10 health scale if deep spatial stats (and thus a score) were available
     if has_deep_stats:
@@ -3508,7 +3507,7 @@ def generate_report_response(payload: dict):
         legend_table.setStyle(TableStyle(legend_style_cmds))
         story.append(legend_table)
 
-        story.append(Spacer(1, 16))
+        story.append(Spacer(1, 5))
 
     # ══════════════════════════════════════════════════════════════════
     # AOI Map Screenshot (perfect context map generated on backend)
@@ -3521,7 +3520,7 @@ def generate_report_response(payload: dict):
                 iw, ih = pil_shot.size
                 
                 max_w = W * 0.65
-                max_h = 85 * mm
+                max_h = 65 * mm
                 
                 scale = min(max_w / iw, max_h / ih)
                 draw_w = iw * scale
@@ -3542,7 +3541,7 @@ def generate_report_response(payload: dict):
                     ('ALIGN', (0,0), (-1,-1), 'CENTER'),
                 ]))
                 story.append(shot_table)
-                story.append(Spacer(1, 14))
+                story.append(Spacer(1, 6))
                 logger.info("Perfect context map generated and embedded in PDF.")
         except Exception as e:
             logger.warning(f"Could not embed perfect context map: {e}")
@@ -3562,7 +3561,7 @@ def generate_report_response(payload: dict):
     # Original layout: balanced map & chart so content fits on two pages
     col_map_w = W * 0.45
     col_chart_w = W * 0.55
-    cell_h_max = 70 * mm
+    cell_h_max = 55 * mm
 
     for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
         # 1. Map Image
@@ -3627,7 +3626,7 @@ def generate_report_response(payload: dict):
             ('SPAN', (0,0), (1,0)), # span label across both
             ('BOTTOMPADDING', (0,0), (1,0), 6),
             ('TOPPADDING', (0,0), (-1,-1), 0),
-            ('BOTTOMPADDING', (0,1), (-1,1), 15),
+            ('BOTTOMPADDING', (0,1), (-1,1), 8),
         ]))
         
         story.append(KeepTogether(row_table))

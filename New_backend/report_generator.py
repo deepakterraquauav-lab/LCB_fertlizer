@@ -1373,7 +1373,7 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             'soilmoisture': ['Highest', 'High', 'Moderate', 'Low', 'Lowest'],
             'lst': ['Hottest', 'Hot', 'Moderate', 'Cool', 'Coolest'],
             'etc': ['Highest', 'High', 'Moderate', 'Low', 'Lowest'],
-            'chlorophyll': ['Rich', 'High', 'Moderate', 'Low', 'Deficient'],
+            'chlorophyll': ['Highest', 'High', 'Moderate', 'Low', 'Lowest'],
             'lai': ['Highest', 'High', 'Moderate', 'Low', 'Lowest']
         }
         
@@ -2331,6 +2331,118 @@ def get_translations(lang: str = "en") -> dict:
             "irrigation_priority": "Priority",
             "irrigation_advice": "Advice",
             "irrigation_no_data": "No irrigation data available",
+            "field_intel_title": "Field Intelligence Analysis",
+            "health_scale_title": "Overall Crop Health Scale (0–10)",
+            "health_weak": "0 – 3<br/><i>Weak</i>",
+            "health_moderate": "4 – 7<br/><i>Moderate</i>",
+            "health_strong": "8 – 10<br/><i>Strong</i>",
+            "aoi_map_main_title": "Area of Interest Map",
+            "aoi_map_subtitle": "Geographically aligned view showing the field boundary.",
+            "param_analysis_title": "Detailed Parameter Analysis",
+            "map_unavailable": "Map unavailable",
+            "chlorophyll_na_msg": "<b>Chlorophyll (CLRe) map not available.</b><br/>This layer requires Sentinel-2 red-edge bands (B5/B7).<br/>No Sentinel-2 imagery was found for the selected date range.<br/><i>Try a wider date range to include a cloud-free image.</i>",
+            "chlorophyll_short_na": "<b>Chlorophyll map unavailable</b><br/><i>Sentinel-2 data not found for selected period.</i>",
+        },
+        "hi": {
+            "report_title": "सटीक कृषि विश्लेषण रिपोर्ट",
+            "logo_alt": "MapZest कृषि बुद्धिमत्ता",
+            "crop": "फसल",
+            "period": "अवधि",
+            "location": "स्थान",
+            "not_specified": "निर्दिष्ट नहीं",
+            "aoi_title": "रुचि का क्षेत्र (AOI)",
+            "aoi_label": "AOI",
+            "aoi_map_title": "AOI (उपयोगकर्ता द्वारा खींचा गया)",
+            "aoi_na": "AOI प्रदान नहीं किया गया",
+            "aoi_area": "AOI क्षेत्रफल (हेक्टेयर)",
+            "time_period": "समय अवधि",
+            "cloud_cover": "बादल आच्छादन",
+            "report_generated": "रिपोर्ट तैयार की गई",
+            "ndvi_title": "वनस्पति (NDVI)",
+            "pca_title": "फसल स्वास्थ्य",
+            "ndvi_chart_title_suffix": "समय के साथ स्वास्थ्य",
+            "ndvi_na": "NDVI समय शृंखला उपलब्ध नहीं है",
+            "cwr_title": "फसल जल आवश्यकता",
+            "kc_title": "फसल गुणांक",
+            "lst_title": "खेत का तापमान",
+            "etc_title": "कुल जल हानि",
+            "sm_title": "मिट्टी में नमी का बदलाव",
+            "soilmoisture_title": "मिट्टी की नमी (%)",
+            "soilmoisture_avg": "<b>औसत मिट्टी की नमी: {mean:.2f}%</b>",
+            "soilmoisture_trend": "<b>मिट्टी की नमी का रुझान:</b> {trend}",
+            "analytics_title": "समग्र फसल विश्लेषिकी (सारांश)",
+            "analytics_health_na": "फसल स्वास्थ्य डेटा उपलब्ध नहीं है",
+            "analytics_cwr_na": "जल आवश्यकता डेटा उपलब्ध नहीं है",
+            "analytics_health": "वर्तमान चंदवा स्वास्थ्य (NDVI औसत): <b>{mean:.2f}</b>",
+            "analytics_cwr": "अनुमानित जल की आवश्यकता (औसत CWR): <b>{mean:.2f} मिमी/दिन</b>",
+            "analytics_temp": "खेत का औसत तापमान: <b>{mean:.2f} °C</b>",
+            "analytics_sm": "औसत मिट्टी की नमी: <b>{mean:.2f}%</b>",
+            "analytics_rec": "सिफारिश: इन निष्कर्षों की पुष्टि करने के लिए खेत का निरीक्षण करें और उचित कार्रवाई करें।",
+            "pie_title": "खेत का आवरण: वनस्पति बनाम बंजर भूमि",
+            "pie_interp": "व्याख्या: अधिक वनस्पति प्रतिशत अच्छे चंदवा आवरण या घने खरपतवार को इंगित करता है। कम प्रतिशत स्पष्ट मिट्टी, विरल वनस्पति या बहुत प्रारंभिक फसल अवस्था को दर्शाता है।",
+            "pie_no_data": "कोई डेटा नहीं",
+            "landcover_veg": "वनस्पति",
+            "landcover_bare": "बंजर भूमि",
+            "thanks": "धन्यवाद",
+            "contact": "किसी भी पूछताछ के लिए, संपर्क करें: contact@terraquauav.com",
+            "analysis_title": "<b>{title} — विस्तृत विश्लेषण:</b>",
+            "analysis_no_data": "इस पैरामीटर के लिए एक मजबूत सारांश की गणना करने के लिए डेटा उपलब्ध नहीं है।",
+            "analysis_trend_stable": "रीडिंग <b>स्थिर</b> रही है, {start:.2f} से शुरू होकर {end:.2f} के करीब समाप्त हुई है।",
+            "analysis_trend_positive": "एक <b>सकारात्मक रुझान</b> देखा गया, जो {start:.2f} से बढ़कर {end:.2f} हो गया।",
+            "analysis_trend_downward": "एक <b>नीचे की ओर रुझान</b> देखा गया, जो {start:.2f} से गिरकर {end:.2f} हो गया।",
+            "analysis_recent_stable": "सबसे हाल की रीडिंग <b>स्थिरता</b> दिखाती है।",
+            "analysis_recent_improve": "सबसे हाल की रीडिंग में <b>हालिया सुधार</b> दिखाती है।",
+            "analysis_recent_decline": "सबसे हाल की रीडिंग <b>हालिया गिरावट</b> दिखाती है।",
+            "analysis_note": "<b>नोट:</b> इन सिफारिशों को स्थानीय परिस्थितियों, मिट्टी के प्रकार और विशिष्ट फसल की आवश्यकताओं के आधार पर अनुकूलित किया जाना चाहिए।",
+            "ndvi_avg": "<b>औसत फसल स्वास्थ्य सूचकांक: {mean:.3f}</b>",
+            "ndvi_vlow": "• <b>बहुत कम स्वास्थ्य:</b> बंजर मिट्टी, तनावग्रस्त वनस्पति या फसल विफलता को दर्शाता है",
+            "ndvi_low": "• <b>कम से मध्यम स्वास्थ्य:</b> शुरुआती तनाव के लक्षण या विरल वनस्पति को दर्शाता है",
+            "ndvi_mod": "• <b>मध्यम स्वास्थ्य:</b> सुधार की गुंजाइश के साथ औसत फसल की स्थिति",
+            "ndvi_good": "• <b>अच्छा स्वास्थ्य:</b> मजबूत प्रकाश संश्लेषक गतिविधि के साथ स्वस्थ वनस्पति",
+            "ndvi_exc": "• <b>उत्कृष्ट स्वास्थ्य:</b> घनी, जोरदार वनस्पति के साथ इष्टतम फसल की स्थिति",
+            "ndvi_trend": "<b>ऐतिहासिक रुझान:</b> {trend}",
+            "ndvi_recent": "<b>हालिया पैटर्न:</b> {trend}",
+            "cwr_avg": "<b>दैनिक जल की औसत आवश्यकता: {mean:.2f} मिमी/दिन</b>",
+            "cwr_trend": "<b>जल की आवश्यकता का रुझान:</b> {trend}",
+            "kc_avg": "<b>औसत फसल गुणांक (Kc): {mean:.2f}</b>",
+            "kc_trend": "<b>विकास चरण का रुझान:</b> {trend}",
+            "lst_avg": "<b>खेत का औसत तापमान: {mean:.1f}°C</b>",
+            "lst_trend": "<b>तापमान रुझान:</b> {trend}",
+            "etc_avg": "<b>औसत कुल जल हानि: {mean:.2f} मिमी/दिन</b>",
+            "etc_trend": "<b>जल हानि का रुझान:</b> {trend}",
+            "sm_avg": "<b>औसत दैनिक मिट्टी की नमी: {mean:.2f}%</b>",
+            "sm_trend": "<b>मिट्टी की नमी का रुझान:</b> {trend}",
+            "default_avg": "<b>औसत मान: {mean:.2f}.</b>",
+            "default_trend": "<b>प्रवृत्ति विश्लेषण:</b> {trend}",
+            "irrigation_title": "स्मार्ट सिंचाई अनुसूची",
+            "irrigation_summary_title": "सिंचाई सारांश",
+            "irrigation_timeline_title": "सिंचाई की समयरेखा",
+            "irrigation_priority_title": "प्राथमिकता वितरण",
+            "irrigation_comparison_title": "जल की आवश्यकता बनाम वर्षा की तुलना",
+            "irrigation_calendar_title": "सिंचाई कैलेंडर",
+            "irrigation_total_events": "कुल सिंचाई घटनाएँ",
+            "irrigation_total_water": "कुल आवश्यक जल",
+            "irrigation_water_saved": "जल की बचत (स्मार्ट शेड्यूलिंग)",
+            "irrigation_savings_percent": "जल की बचतें",
+            "irrigation_urgent": "अत्यावश्यक कार्यक्रम",
+            "irrigation_high": "उच्च प्राथमिकता वाले कार्यक्रम",
+            "irrigation_medium": "मध्यम प्राथमिकता वाले कार्यक्रम",
+            "irrigation_date": "दिनांक",
+            "irrigation_amount": "मात्रा (मिमी)",
+            "irrigation_priority": "प्राथमिकता",
+            "irrigation_advice": "सलाह",
+            "irrigation_no_data": "कोई सिंचाई डेटा उपलब्ध नहीं है",
+            "field_intel_title": "खेत बुद्धि विश्लेषण",
+            "health_scale_title": "समग्र फसल स्वास्थ्य पैमाना (0-10)",
+            "health_weak": "0 – 3<br/><i>कमजोर</i>",
+            "health_moderate": "4 – 7<br/><i>मध्यम</i>",
+            "health_strong": "8 – 10<br/><i>मजबूत</i>",
+            "aoi_map_main_title": "रुचि का क्षेत्र मानचित्र",
+            "aoi_map_subtitle": "खेत की सीमा दर्शाने वाला भौगोलिक संरेखित दृश्य।",
+            "param_analysis_title": "विस्तृत पैरामीटर विश्लेषण",
+            "map_unavailable": "मानचित्र उपलब्ध नहीं",
+            "chlorophyll_na_msg": "<b>क्लोरोफिल (CLRe) मानचित्र उपलब्ध नहीं है।</b><br/>इस परत के लिए सेंटिनल-2 रेड-एज बैंड (B5/B7) की आवश्यकता है।<br/>चुनी गई समय सीमा के लिए कोई सेंटिनल-2 डेटा नहीं मिला।<br/><i>बादल रहित छवि के लिए विस्तृत समय सीमा का प्रयास करें।</i>",
+            "chlorophyll_short_na": "<b>क्लोरोफिल मानचित्र अनुपलब्ध</b><br/><i>सेंटिनल-2 डेटा नहीं मिला।</i>",
         },
     }
     return translations.get(lang, translations["en"])
@@ -3049,7 +3161,7 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
     fig.savefig(outbuf, format='png', bbox_inches='tight', dpi=140)
     plt.close(fig)
 
-def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_date: str, crop_name: str, aoi_name: str = "Field") -> str:
+def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_date: str, crop_name: str, aoi_name: str = "Field", language: str = "en") -> str:
     """
     Generates an expert agricultural summary using either Claude or Gemini API based on environment variables.
     """
@@ -3130,6 +3242,8 @@ Please write a 5–7 sentence continuous summary that:
 3) Clearly points out if the response is uniform or patchy across the field.
 4) Ends with one or two direct, practical suggestions for the farmer (for example where to watch more closely or where extra care may be needed).
 """
+    if language == "hi":
+        ai_prompt += "\nIMPORTANT: You must write your ENTIRE final response strictly in the Hindi language. Translate all information to Hindi."
 
     ai_text = ""
     # Try Claude first if available
@@ -3353,21 +3467,73 @@ def generate_report_response(payload: dict):
         bottomMargin=12 * mm,
     )
 
+    pdf_font_name = "Helvetica"
+    pdf_font_bold = "Helvetica-Bold"
+    pdf_font_italic = "Helvetica-Oblique"
+
+    # In the generate_report_response function, around line ~1390
+if language == "hi":
+    try:
+        # Try to find and load a Devanagari font
+        hindi_font_path = get_hindi_font_path()
+        
+        if hindi_font_path and os.path.exists(hindi_font_path):
+            # Register with shapable=True for complex script support
+            pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
+            pdf_font_name = "HindiFont"
+            pdf_font_bold = "HindiFont"  
+            pdf_font_italic = "HindiFont"
+            
+            # Also register bold/italic variants if available
+            bold_path = hindi_font_path.replace("Regular", "Bold")
+            if os.path.exists(bold_path):
+                pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
+                pdf_font_bold = "HindiFont-Bold"
+                
+            logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
+        else:
+            # Fallback to Arial Unicode MS which has some Devanagari support
+            fallback_paths = [
+                "C:/Windows/Fonts/ARIALUNI.TTF",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+            ]
+            for fb_path in fallback_paths:
+                if os.path.exists(fb_path):
+                    pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
+                    pdf_font_name = "HindiFont"
+                    pdf_font_bold = "HindiFont"
+                    pdf_font_italic = "HindiFont"
+                    logger.warning(f"Using fallback font for Hindi: {fb_path}")
+                    break
+            else:
+                logger.warning("No Hindi font found. Text may not render correctly.")
+    except Exception as e:
+        logger.error(f"Failed to load Hindi font: {e}")
+        traceback.print_exc()
+
     styles  = getSampleStyleSheet()
     W       = doc.width            # usable width
-    # Slightly increased leading/spacing for easier reading, but still within 2-page layout
+    
+    # Tighten spacing for Hindi to ensure content fits on 2 pages
+    is_hi = (language == "hi")
+    line_leading = 12.5 if is_hi else 14.5
+    para_space = 3 if is_hi else 5
+    
     normal  = ParagraphStyle(
         "Normal2",
         parent=styles["Normal"],
-        fontName="Helvetica",
+        fontName=pdf_font_name,
         fontSize=9.5,
-        leading=14.5,
-        spaceAfter=5,
+        leading=line_leading,
+        spaceAfter=para_space,
+        wordSelectMethod='shaping' if is_hi else 'default'
     )
-    caption = ParagraphStyle("Caption", fontName="Helvetica-Oblique",
-                              fontSize=8, leading=10, alignment=1, textColor=colors.grey)
-    maplab  = ParagraphStyle("MapLabel", fontName="Helvetica-Bold",
-                              fontSize=8.5, leading=11, alignment=1)
+    caption = ParagraphStyle("Caption", fontName=pdf_font_italic,
+                              fontSize=8, leading=10, alignment=1, textColor=colors.grey,
+                              wordSelectMethod='shaping' if is_hi else 'default')
+    maplab  = ParagraphStyle("MapLabel", fontName=pdf_font_bold,
+                              fontSize=8.5, leading=11, alignment=1,
+                              wordSelectMethod='shaping' if is_hi else 'default')
 
     story = []
 
@@ -3388,13 +3554,13 @@ def generate_report_response(payload: dict):
         except Exception:
             pass
 
-    header_left = logo_img or Paragraph("<b>KrishiZest</b>", ParagraphStyle("Logo", fontSize=14, fontName="Helvetica-Bold", textColor=colors.HexColor("#2E7D32")))
+    header_left = logo_img or Paragraph("<b>KrishiZest</b>", ParagraphStyle("Logo", fontSize=14, fontName=pdf_font_bold, textColor=colors.HexColor("#2E7D32")))
     period_str   = f"{start_date}  →  {end_date}"
     loc_str      = location_text or "—"
     header_right = Paragraph(
         f"<b>{lang_strings.get('report_title', 'Precision Agriculture Report')}</b><br/>"
         f"<font size='8'>{crop_name}  |  {period_str}  |  {loc_str}</font>",
-        ParagraphStyle("HdrRight", fontName="Helvetica", fontSize=10.5, leading=14, alignment=2, textColor=colors.HexColor("#212121"))
+        ParagraphStyle("HdrRight", fontName=pdf_font_name, fontSize=10.5, leading=14, alignment=2, textColor=colors.HexColor("#212121"))
     )
 
     hdr_table = Table([[header_left, header_right]], colWidths=[W*0.35, W*0.65])
@@ -3404,9 +3570,10 @@ def generate_report_response(payload: dict):
     ]))
     story.append(hdr_table)
     # Slightly reduce gap under header to reclaim vertical space
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 2 if is_hi else 4))
 
-    story.append(Paragraph("Field Intelligence Analysis", ParagraphStyle("SumTitle", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=6)))
+    sum_title = lang_strings.get("field_intel_title", "Field Intelligence Analysis")
+    story.append(Paragraph(sum_title, ParagraphStyle("SumTitle", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=3 if is_hi else 6, wordSelectMethod='shaping' if is_hi else 'default')))
 
     # Fetch deep stats
     deep_stats = {}
@@ -3423,15 +3590,16 @@ def generate_report_response(payload: dict):
     # Determine if deep stats are truly available (used to decide whether to show the 0–10 scale)
     has_deep_stats = bool(deep_stats) and not deep_stats.get('error') and bool(deep_stats.get('basic_stats'))
 
-    ai_summary = generate_field_intelligence_summary(deep_stats, start_date, end_date, crop_name)
+    ai_summary = generate_field_intelligence_summary(deep_stats, start_date, end_date, crop_name, location_text or "Field", language)
     for block in ai_summary.split("\n\n"):
         story.append(Paragraph(sanitize_html_for_reportlab(block), normal))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 2 if is_hi else 4))
 
     # Only show the 0–10 health scale if deep spatial stats (and thus a score) were available
     if has_deep_stats:
         # Simple 0–10 health legend bar just after AI summary
-        legend_title = Paragraph("<b>Overall Crop Health Scale (0–10)</b>", normal)
+        legend_title_text = lang_strings.get("health_scale_title", "<b>Overall Crop Health Scale (0–10)</b>")
+        legend_title = Paragraph(legend_title_text, normal)
         story.append(legend_title)
 
         # Three sections: 0–3 (Weak), 4–7 (Moderate), 8–10 (Strong)
@@ -3446,9 +3614,9 @@ def generate_report_response(payload: dict):
         # First row: three bands; second row: score label (filled later)
         legend_rows = [
             [
-                Paragraph("0 – 3<br/><i>Weak</i>", ParagraphStyle("LegLbl", parent=normal, alignment=1)),
-                Paragraph("4 – 7<br/><i>Moderate</i>", ParagraphStyle("LegLbl", parent=normal, alignment=1)),
-                Paragraph("8 – 10<br/><i>Strong</i>", ParagraphStyle("LegLbl", parent=normal, alignment=1)),
+                Paragraph(lang_strings.get("health_weak", "0 – 3<br/><i>Weak</i>"), ParagraphStyle("LegLbl", parent=normal, alignment=1)),
+                Paragraph(lang_strings.get("health_moderate", "4 – 7<br/><i>Moderate</i>"), ParagraphStyle("LegLbl", parent=normal, alignment=1)),
+                Paragraph(lang_strings.get("health_strong", "8 – 10<br/><i>Strong</i>"), ParagraphStyle("LegLbl", parent=normal, alignment=1)),
             ],
             ["", "", ""],  # reserved for numeric score label under the correct band
         ]
@@ -3507,7 +3675,7 @@ def generate_report_response(payload: dict):
         legend_table.setStyle(TableStyle(legend_style_cmds))
         story.append(legend_table)
 
-        story.append(Spacer(1, 5))
+        story.append(Spacer(1, 2.5 if is_hi else 5))
 
     # ══════════════════════════════════════════════════════════════════
     # AOI Map Screenshot (perfect context map generated on backend)
@@ -3529,10 +3697,13 @@ def generate_report_response(payload: dict):
                 map_buf.seek(0)
                 shot_img = Image(map_buf, width=draw_w, height=draw_h)
 
-                story.append(Paragraph("Area of Interest Map", ParagraphStyle("AOIMapTitle", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=8, alignment=1)))
+                aoi_map_title = lang_strings.get("aoi_map_main_title", "Area of Interest Map")
+                aoi_map_subtitle = lang_strings.get("aoi_map_subtitle", "<i>Geographically aligned view showing the field boundary.</i>")
+                
+                story.append(Paragraph(aoi_map_title, ParagraphStyle("AOIMapTitle", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=4 if is_hi else 8, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')))
                 story.append(Paragraph(
-                    "<i>Geographically aligned view showing the field boundary.</i>",
-                    ParagraphStyle("AOICaption", fontName="Helvetica-Oblique", fontSize=8, textColor=colors.grey, spaceAfter=8, alignment=1)
+                    aoi_map_subtitle,
+                    ParagraphStyle("AOICaption", fontName=pdf_font_italic, fontSize=8, textColor=colors.grey, spaceAfter=4 if is_hi else 8, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')
                 ))
 
                 shot_table = Table([[shot_img]], colWidths=[W])
@@ -3541,7 +3712,7 @@ def generate_report_response(payload: dict):
                     ('ALIGN', (0,0), (-1,-1), 'CENTER'),
                 ]))
                 story.append(shot_table)
-                story.append(Spacer(1, 6))
+                story.append(Spacer(1, 3 if is_hi else 6))
                 logger.info("Perfect context map generated and embedded in PDF.")
         except Exception as e:
             logger.warning(f"Could not embed perfect context map: {e}")
@@ -3549,7 +3720,8 @@ def generate_report_response(payload: dict):
     # ══════════════════════════════════════════════════════════════════
     # Side-by-Side Map & Chart Layout (Auto-paginating)
     # ══════════════════════════════════════════════════════════════════
-    story.append(Paragraph("Detailed Parameter Analysis", ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=12, alignment=1)))
+    p2_title = lang_strings.get("param_analysis_title", "Detailed Parameter Analysis")
+    story.append(Paragraph(p2_title, ParagraphStyle("P2Title", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=6 if is_hi else 12, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')))
 
     MAP_PARAMS = [
         ('pca',         'Crop Health',       'pca',          '#2E7D32', True),
@@ -3565,7 +3737,8 @@ def generate_report_response(payload: dict):
 
     for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
         # 1. Map Image
-        _no_map_msg = f"<i>Map unavailable</i>"
+        map_u_str = lang_strings.get("map_unavailable", "Map unavailable")
+        _no_map_msg = f"<i>{map_u_str}</i>"
         map_img_flowable = Paragraph(_no_map_msg, ParagraphStyle("NoMap", fontSize=8, alignment=1, textColor=colors.grey))
         if aoi:
             try:
@@ -3587,22 +3760,22 @@ def generate_report_response(payload: dict):
                 else:
                     # No map returned — build a parameter-specific informative message
                     if param == 'chlorophyll':
-                        info_msg = ("<b>Chlorophyll (CLRe) map not available.</b><br/>"
-                                    "This layer requires Sentinel-2 red-edge bands (B5/B7).<br/>"
-                                    "No Sentinel-2 imagery was found for the selected date range.<br/>"
-                                    "<i>Try a wider date range to include a cloud-free image.</i>")
+                        info_msg = lang_strings.get("chlorophyll_na_msg")
                     else:
-                        info_msg = f"<i>{label} map could not be generated for this date range.</i>"
+                        info_msg = f"<i>{label} {map_u_str}</i>"
+                    
                     map_img_flowable = Paragraph(info_msg,
                         ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
-                                       textColor=colors.HexColor("#555555"), leading=11, spaceAfter=4))
+                                       textColor=colors.HexColor("#555555"), leading=11, spaceAfter=4,
+                                       wordSelectMethod='shaping' if is_hi else 'default'))
             except Exception as e:
                 logger.warning(f"Map failed for {param}: {e}")
                 if param == 'chlorophyll':
                     map_img_flowable = Paragraph(
-                        "<b>Chlorophyll map unavailable</b><br/><i>Sentinel-2 data not found for selected period.</i>",
+                        lang_strings.get("chlorophyll_short_na"),
                         ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
-                                       textColor=colors.HexColor("#555555"), leading=11))
+                                       textColor=colors.HexColor("#555555"), leading=11,
+                                       wordSelectMethod='shaping' if is_hi else 'default'))
 
 
         # 2. Chart Image

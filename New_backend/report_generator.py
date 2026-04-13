@@ -1768,7 +1768,7 @@ def _render_pie_chart(landcover_dict, outbuf: io.BytesIO, title: str = "Vegetati
 
 
 def _render_aoi_map(aoi_coords, outbuf: io.BytesIO, title: str = "AOI Map", na_text: str = "AOI not available") -> None:
-    try:
+    try: 
         polygon = aoi_coords[0] if isinstance(aoi_coords[0][0], (list, tuple)) else aoi_coords
         lons = [p[0] for p in polygon]
         lats = [p[1] for p in polygon]

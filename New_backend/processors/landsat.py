@@ -25,7 +25,7 @@ def get_landsat_collection(aoi, start_date, end_date, cloud_filter=30):
                .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
                .filterBounds(aoi) \
                .filterDate(start_date, end_date) \
-               .filter(ee.Filter.lt('CLOUD_COVER', 30))  # Max 30% cloud cover
+               .filter(ee.Filter.lt('CLOUD_COVER', 5))  # Max 30% cloud cover
     
     # Add date string for grouping
     with_date = merged.map(lambda img: img.set('date_str', img.date().format('YYYY-MM-dd')))

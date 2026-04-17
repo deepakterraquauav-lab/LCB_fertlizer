@@ -17,7 +17,7 @@ def mask_s2_clouds(img):
     
     return img.updateMask(mask).divide(10000).copyProperties(img, ['system:time_start', 'CLOUDY_PIXEL_PERCENTAGE'])
 
-def get_s2_collection(aoi, start_date, end_date, cloud_filter=30):
+def get_s2_collection(aoi, start_date, end_date, cloud_filter=20):
     """
     Get Sentinel-2 collection, handling mosaics for partial tiles.
     
@@ -28,7 +28,7 @@ def get_s2_collection(aoi, start_date, end_date, cloud_filter=30):
     s2_raw = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
         .filterBounds(aoi) \
         .filterDate(start_date, end_date) \
-        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30)) # Max 30% cloud cover
+        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) # Max 30% cloud cover
         
     s2 = s2_raw.map(mask_s2_clouds).map(lambda img: img.set('date_str', img.date().format('YYYY-MM-dd')))
     

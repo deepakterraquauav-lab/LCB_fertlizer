@@ -1066,11 +1066,12 @@ def add_colormap_legend(mosaic_pil: PILImage.Image, layer_type: str, title: Opti
         mosaic_w, mosaic_h = mosaic_pil.size
         title_h = 0         # No space for title
         subtitle_h = 0      # No space for subtitle
-        legend_h = 550      # EXTRA LARGE space for bigger legend + statistics + scale bar
+        has_stats = bool(stats)
+        legend_h = 400      # EXTRA LARGE space for bigger legend + statistics + scale bar
         padding = 40        # Large padding around content for better spacing
         
         # ADD EXTRA WIDTH for stats box on the left side
-        stats_box_width = 970  # Stats box + small margin
+        stats_box_width = 970 if has_stats else 300  # Stats box + small margin
         left_stats_area = stats_box_width  # Reserve space on left for stats
         
         new_w = left_stats_area + mosaic_w + padding * 2  # WIDER canvas with stats area
@@ -1401,9 +1402,10 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
         
         # Image dimensions and layout calculations
         mosaic_w, mosaic_h = mosaic_pil.size
-        legend_h = 550
+        has_stats = bool(stats)
+        legend_h = 400
         padding = 40
-        stats_box_width = 970
+        stats_box_width = 970 if has_stats else 300
         left_stats_area = stats_box_width
         
         new_w = left_stats_area + mosaic_w + padding * 2
@@ -3340,10 +3342,10 @@ def create_perfect_context_map(aoi, zoom=18, padding=150):
         min_x, min_y = lonlat_to_tile_xy(min_lon, max_lat, zoom)
         max_x, max_y = lonlat_to_tile_xy(max_lon, min_lat, zoom)
         
-        tile_min_x = int(math.floor(min_x))
-        tile_max_x = int(math.floor(max_x))
-        tile_min_y = int(math.floor(min_y))
-        tile_max_y = int(math.floor(max_y))
+        tile_min_x = int(math.floor(min_x)) - 1
+        tile_max_x = int(math.floor(max_x)) + 1
+        tile_min_y = int(math.floor(min_y)) - 1
+        tile_max_y = int(math.floor(max_y)) + 1
         
         # Calculate canvas size
         cols = tile_max_x - tile_min_x + 1
@@ -3461,10 +3463,10 @@ def generate_report_response(payload: dict):
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=14 * mm,
-        leftMargin=14 * mm,
-        topMargin=12 * mm,
-        bottomMargin=12 * mm,
+        rightMargin=12 * mm,
+        leftMargin=12 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
     )
 
     pdf_font_name = "Helvetica"
@@ -3687,8 +3689,8 @@ if language == "hi":
                 pil_shot = PILImage.open(map_buf)
                 iw, ih = pil_shot.size
                 
-                max_w = W * 0.65
-                max_h = 65 * mm
+                max_w = W * 0.85
+                max_h = 75 * mm
                 
                 scale = min(max_w / iw, max_h / ih)
                 draw_w = iw * scale
@@ -3720,8 +3722,7 @@ if language == "hi":
     # ══════════════════════════════════════════════════════════════════
     # Side-by-Side Map & Chart Layout (Auto-paginating)
     # ══════════════════════════════════════════════════════════════════
-    p2_title = lang_strings.get("param_analysis_title", "Detailed Parameter Analysis")
-    story.append(Paragraph(p2_title, ParagraphStyle("P2Title", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=6 if is_hi else 12, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')))
+    story.append(Paragraph("Detailed Parameter Analysis", ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=12, alignment=1)))
 
     MAP_PARAMS = [
         ('pca',         'Crop Health',       'pca',          '#2E7D32', True),
@@ -3731,9 +3732,9 @@ if language == "hi":
     ]
 
     # Original layout: balanced map & chart so content fits on two pages
-    col_map_w = W * 0.45
-    col_chart_w = W * 0.55
-    cell_h_max = 55 * mm
+    col_map_w = W * 0.50
+    col_chart_w = W * 0.50
+    cell_h_max = 63 * mm
 
     for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
         # 1. Map Image
@@ -3797,9 +3798,9 @@ if language == "hi":
             ('ALIGN', (0,0), (0, -1), 'CENTER'),
             ('ALIGN', (1,0), (1, -1), 'CENTER'),
             ('SPAN', (0,0), (1,0)), # span label across both
-            ('BOTTOMPADDING', (0,0), (1,0), 6),
+            ('BOTTOMPADDING', (0,0), (1,0), 2),
             ('TOPPADDING', (0,0), (-1,-1), 0),
-            ('BOTTOMPADDING', (0,1), (-1,1), 8),
+            ('BOTTOMPADDING', (0,1), (-1,1), 2),
         ]))
         
         story.append(KeepTogether(row_table))

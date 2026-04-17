@@ -21,6 +21,7 @@ def get_s2_collection(aoi, start_date, end_date, cloud_filter=20):
     """
     Get Sentinel-2 collection, handling mosaics for partial tiles.
     
+    
     Args:
         cloud_filter: Scene-level cloud cover threshold (default 30%).
                       Relaxed because per-pixel QA60 masking handles actual clouds.

@@ -4,7 +4,7 @@ import { fetchAvailableDates } from '../utils/api';
 import './DateCarousel.css';
 
 function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true }) {
-    const { drawnAOI, startDate, endDate, isDarkMode, selectedLayer } = useApp();
+    const { drawnAOI, startDate, endDate, isDarkMode, selectedLayer, chartData } = useApp();
     const [availableDates, setAvailableDates] = useState([]);
     const [selectedDate, setSelectedDate] = useState(initialDate || null);
     const [loading, setLoading] = useState(false);
@@ -116,7 +116,14 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
 
     // Filter dates based on layer requirements
     // Requested: remove Landsat dates from the frontend Date Carousel
-    const displayDates = availableDates.filter(d => d.sensor !== 'Landsat');
+    let displayDates = availableDates.filter(d => d.sensor !== 'Landsat');
+
+    // ONLY show dates that have valid data in the chart (filters out completely cloudy days)
+    if (chartData && chartData.length > 0) {
+        // Extract available dates from the chart array (format: YYYY-MM-DD)
+        const validChartDates = new Set(chartData.map(d => d.date));
+        displayDates = displayDates.filter(d => validChartDates.has(d.date));
+    }
 
     // Don't show if no dates found after loading
     if (!loading && displayDates.length === 0) {

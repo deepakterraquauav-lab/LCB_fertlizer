@@ -799,6 +799,15 @@ input[type="text"]:focus {
   /* Ensure it takes full height */
 }
 
+/* Push Leaflet right controls when the right panel is open */
+.map-container.right-panel-open .leaflet-right {
+  right: 268px;
+}
+
+.map-container .leaflet-right {
+  transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Drawing Toolbar - Floating */
 .drawing-toolbar {
   position: absolute;
@@ -3882,28 +3891,7 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
   transform: scale(0.98);
 }
 
-/* Push Leaflet right controls when the right panel is open */
-/* Analytics panel is 260px wide by default on laptop */
-.map-container.right-panel-open .leaflet-right {
-  right: 268px;
-}
 
-/* On larger screens where analytics is wider, push more */
-@media (min-width: 1367px) {
-  .map-container.right-panel-open .leaflet-right {
-    right: 308px;
-  }
-}
-
-@media (min-width: 1600px) {
-  .map-container.right-panel-open .leaflet-right {
-    right: 348px;
-  }
-}
-
-.map-container .leaflet-right {
-  transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
 
 /* ========================================
    RESPONSIVE DESIGN (MOBILE & TABLET)

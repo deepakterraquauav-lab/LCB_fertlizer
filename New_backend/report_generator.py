@@ -3474,44 +3474,44 @@ def generate_report_response(payload: dict):
     pdf_font_italic = "Helvetica-Oblique"
 
     # In the generate_report_response function, around line ~1390
-if language == "hi":
-    try:
-        # Try to find and load a Devanagari font
-        hindi_font_path = get_hindi_font_path()
-        
-        if hindi_font_path and os.path.exists(hindi_font_path):
+    if language == "hi":
+        try:
+            # Try to find and load a Devanagari font
+            hindi_font_path = get_hindi_font_path()
+            
+            if hindi_font_path and os.path.exists(hindi_font_path):
             # Register with shapable=True for complex script support
-            pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
-            pdf_font_name = "HindiFont"
-            pdf_font_bold = "HindiFont"  
-            pdf_font_italic = "HindiFont"
+                pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
+                pdf_font_name = "HindiFont"
+                pdf_font_bold = "HindiFont"  
+                pdf_font_italic = "HindiFont"
             
             # Also register bold/italic variants if available
-            bold_path = hindi_font_path.replace("Regular", "Bold")
-            if os.path.exists(bold_path):
-                pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
-                pdf_font_bold = "HindiFont-Bold"
+                bold_path = hindi_font_path.replace("Regular", "Bold")
+                if os.path.exists(bold_path):
+                    pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
+                    pdf_font_bold = "HindiFont-Bold"
                 
-            logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
-        else:
-            # Fallback to Arial Unicode MS which has some Devanagari support
-            fallback_paths = [
-                "C:/Windows/Fonts/ARIALUNI.TTF",
-                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-            ]
-            for fb_path in fallback_paths:
-                if os.path.exists(fb_path):
-                    pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
-                    pdf_font_name = "HindiFont"
-                    pdf_font_bold = "HindiFont"
+                logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
+            else:
+                # Fallback to Arial Unicode MS which has some Devanagari support
+                fallback_paths = [
+                    "C:/Windows/Fonts/ARIALUNI.TTF",
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+                ]
+                for fb_path in fallback_paths:
+                    if os.path.exists(fb_path):
+                        pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
+                        pdf_font_name = "HindiFont"
+                        pdf_font_bold = "HindiFont"
                     pdf_font_italic = "HindiFont"
                     logger.warning(f"Using fallback font for Hindi: {fb_path}")
                     break
-            else:
-                logger.warning("No Hindi font found. Text may not render correctly.")
-    except Exception as e:
-        logger.error(f"Failed to load Hindi font: {e}")
-        traceback.print_exc()
+                else:
+                    logger.warning("No Hindi font found. Text may not render correctly.")
+        except Exception as e:
+            logger.error(f"Failed to load Hindi font: {e}")
+            traceback.print_exc()
 
     styles  = getSampleStyleSheet()
     W       = doc.width            # usable width

@@ -635,24 +635,40 @@ def get_available_dates():
         start_date = data['start_date']
         end_date = data['end_date']
         
-        # Get Sentinel-2 dates only
-        s2_col = sentinel2.get_s2_collection(aoi, start_date, end_date)
-        
-        # Extract dates
-        s2_dates = s2_col.aggregate_array('selected_date').getInfo()
-        
-        # Merge and sort unique dates
-        all_dates = sorted(list(set(s2_dates)))
-        
-        # Determine sensor for each date
+        # Get AOI-level cloud proxy per Sentinel-2 date.
+        # This is computed at 20m only for statistics (visualization resolution is unchanged).
+        cloud_fc = sentinel2.get_s2_date_cloud_info(
+            aoi,
+            start_date,
+            end_date,
+            cloud_filter=100,
+            cs_threshold=0.60,
+            scale=20
+        )
+        cloud_features = cloud_fc.getInfo().get('features', [])
+
         date_info = []
-        for date_str in all_dates:
+        for f in cloud_features:
+            props = f.get('properties', {})
+            date_str = props.get('date')
+            if not date_str:
+                continue
+            cloud_pct = props.get('cloud_pct_aoi', 0)
+            try:
+                cloud_pct = round(float(cloud_pct), 2)
+            except Exception:
+                cloud_pct = 0.0
+
             date_info.append({
                 'date': date_str,
                 'sensor': 'Sentinel-2',
                 'has_landsat': False,
-                'has_sentinel2': True
+                'has_sentinel2': True,
+                'cloud_pct_aoi': cloud_pct
             })
+
+        all_dates = sorted([d['date'] for d in date_info])
+        date_info = sorted(date_info, key=lambda x: x['date'])
         
         return jsonify({
             'success': True,

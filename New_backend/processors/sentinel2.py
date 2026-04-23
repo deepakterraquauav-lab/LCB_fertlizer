@@ -1,36 +1,78 @@
 import ee
 from . import common
 
-def mask_s2_clouds(img):
-    """
-    Cloud masking for Sentinel-2 using QA60.
-    Relaxed mask - mirroring the JS logic: qa.bitwiseAnd(cloudBitMask).eq(0)
-    """
-    qa = img.select('QA60')
-    cloud_bit_mask = 1 << 10
-    cirrus_bit_mask = 1 << 11
-    # JS: var mask = qa.bitwiseAnd(cloudBitMask).eq(0);
-    # This ignores cirrus in the JS code provided ('cloudBitMask' used only in bitwiseAnd)
-    # But usually good to mask both. I'll stick to JS logic which seemed to focus on cloudBitMask?
-    # Actually JS said: var cloudBitMask = 1 << 10; ... mask = qa.bitwiseAnd(cloudBitMask).eq(0);
-    mask = qa.bitwiseAnd(cloud_bit_mask).eq(0)
-    
-    return img.updateMask(mask).divide(10000).copyProperties(img, ['system:time_start', 'CLOUDY_PIXEL_PERCENTAGE'])
+def _get_bad_scl_mask(scl_img):
+    """Return mask for pixels considered cloudy/invalid from SCL."""
+    return (
+        scl_img.eq(0)   # no data
+        .Or(scl_img.eq(1))   # saturated / defective
+        .Or(scl_img.eq(2))   # dark area pixels
+        .Or(scl_img.eq(3))   # cloud shadows
+        .Or(scl_img.eq(7))   # unclassified
+        .Or(scl_img.eq(8))   # cloud medium probability
+        .Or(scl_img.eq(9))   # cloud high probability
+        .Or(scl_img.eq(10))  # thin cirrus
+    )
 
-def get_s2_collection(aoi, start_date, end_date, cloud_filter=30):
+def _attach_cloud_score_plus(s2_collection):
+    """Attach Cloud Score+ `cs` band to each Sentinel-2 image when available."""
+    cs_plus = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED')
+    join = ee.Join.saveFirst('cs_img')
+    joined = join.apply(
+        primary=s2_collection,
+        secondary=cs_plus,
+        condition=ee.Filter.equals(leftField='system:index', rightField='system:index')
+    )
+
+    def add_cs_band(img):
+        img = ee.Image(img)
+        cs_img = ee.Image(img.get('cs_img'))
+        return ee.Image(
+            ee.Algorithms.If(
+                img.get('cs_img'),
+                img.addBands(cs_img.select('cs')),
+                img
+            )
+        )
+
+    return ee.ImageCollection(joined).map(add_cs_band)
+
+def mask_s2_clouds(img, cs_threshold=0.60):
+    """
+    Per-pixel cloud masking for Sentinel-2 using SCL classes + Cloud Score+.
+    """
+    scl = img.select('SCL')
+    bad_scl = _get_bad_scl_mask(scl)
+    mask = bad_scl.Not()
+
+    has_cs = img.bandNames().contains('cs')
+    cs_mask = ee.Image(
+        ee.Algorithms.If(has_cs, img.select('cs').gte(cs_threshold), ee.Image(1))
+    )
+
+    return (
+        img.updateMask(mask)
+           .updateMask(cs_mask)
+           .divide(10000)
+           .copyProperties(img, ['system:time_start', 'CLOUDY_PIXEL_PERCENTAGE'])
+    )
+
+def get_s2_collection(aoi, start_date, end_date, cloud_filter=100, cs_threshold=0.60):
     """
     Get Sentinel-2 collection, handling mosaics for partial tiles.
     
     Args:
-        cloud_filter: Scene-level cloud cover threshold (default 30%).
-                      Relaxed because per-pixel QA60 masking handles actual clouds.
+        cloud_filter: Relaxed scene gate for CLOUDY_PIXEL_PERCENTAGE (default 100%).
+        cs_threshold: Cloud Score+ `cs` minimum threshold (default 0.60).
     """
     s2_raw = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
         .filterBounds(aoi) \
         .filterDate(start_date, end_date) \
-        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30)) # Max 30% cloud cover
-        
-    s2 = s2_raw.map(mask_s2_clouds).map(lambda img: img.set('date_str', img.date().format('YYYY-MM-dd')))
+        .filter(ee.Filter.lte('CLOUDY_PIXEL_PERCENTAGE', cloud_filter))
+
+    s2_with_cs = _attach_cloud_score_plus(s2_raw)
+    s2 = s2_with_cs.map(lambda img: mask_s2_clouds(img, cs_threshold)) \
+                   .map(lambda img: img.set('date_str', img.date().format('YYYY-MM-dd')))
     
     # Mosaic by date
     unique_dates = s2.aggregate_array('date_str').distinct().sort()
@@ -49,8 +91,76 @@ def get_s2_collection(aoi, start_date, end_date, cloud_filter=30):
 
     s2_daily = ee.ImageCollection(unique_dates.map(make_mosaic))
     
-    # Filter by 'cloud_cover' which we set from min CLOUDY_PIXEL_PERCENTAGE
-    return s2_daily.filter(ee.Filter.lt('cloud_cover', cloud_filter))
+    # Collection already uses relaxed scene gate + strict per-pixel masks.
+    return s2_daily
+
+def get_s2_date_cloud_info(aoi, start_date, end_date, cloud_filter=100, cs_threshold=0.60, scale=20):
+    """
+    Compute AOI-only cloud proxy (%) per available Sentinel-2 date.
+
+    Cloud proxy:
+      100 - (clear_pixels / observed_pixels * 100)
+    where:
+      clear_pixels    -> pixels that pass SCL + Cloud Score+ filters
+      observed_pixels -> SCL != 0 (observed pixels in AOI)
+    """
+    s2_raw = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
+        .filterBounds(aoi) \
+        .filterDate(start_date, end_date) \
+        .filter(ee.Filter.lte('CLOUDY_PIXEL_PERCENTAGE', cloud_filter))
+
+    s2_with_cs = _attach_cloud_score_plus(s2_raw) \
+        .map(lambda img: img.set('date_str', img.date().format('YYYY-MM-dd')))
+
+    unique_dates = s2_with_cs.aggregate_array('date_str').distinct().sort()
+
+    def summarize_date(d):
+        d = ee.String(d)
+        daily = s2_with_cs.filterDate(ee.Date(d), ee.Date(d).advance(1, 'day'))
+        mosaic = ee.Image(daily.mosaic().clip(aoi))
+
+        scl = mosaic.select('SCL')
+        observed = scl.neq(0)
+        bad_scl = _get_bad_scl_mask(scl)
+
+        has_cs = mosaic.bandNames().contains('cs')
+        clear_cs = ee.Image(ee.Algorithms.If(has_cs, mosaic.select('cs').gte(cs_threshold), ee.Image(1)))
+        clear_mask = observed.And(bad_scl.Not()).And(clear_cs)
+
+        # Use count of unmasked pixels (more robust than sum on booleans).
+        count_img = ee.Image.cat([
+            observed.selfMask().rename('observed_px'),
+            clear_mask.selfMask().rename('clear_px')
+        ])
+
+        counts = count_img.reduceRegion(
+            reducer=ee.Reducer.count(),
+            geometry=aoi,
+            scale=scale,
+            maxPixels=1e10,
+            bestEffort=False,
+            tileScale=4
+        )
+
+        observed_px = ee.Number(ee.Algorithms.If(counts.get('observed_px'), counts.get('observed_px'), 0))
+        clear_px = ee.Number(ee.Algorithms.If(counts.get('clear_px'), counts.get('clear_px'), 0))
+        clear_pct = ee.Number(
+            ee.Algorithms.If(
+                observed_px.gt(0),
+                clear_px.divide(observed_px).multiply(100),
+                0
+            )
+        )
+        cloud_pct = ee.Number(100).subtract(clear_pct).max(0).min(100)
+
+        return ee.Feature(None, {
+            'date': d,
+            'cloud_pct_aoi': cloud_pct,
+            'observed_px': observed_px,
+            'clear_px': clear_px
+        })
+
+    return ee.FeatureCollection(unique_dates.map(summarize_date))
 
 def process_s2_image(img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=True):
     """

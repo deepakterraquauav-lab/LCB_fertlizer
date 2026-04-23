@@ -472,29 +472,7 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
         if draw_aoi_outline and aoi:
             try:
                 draw = ImageDraw.Draw(mosaic)
-                # Handle Polygon or MultiPolygon robustly based on nesting
-                coords = aoi['geometry']['coordinates']
-                polygons = []
-                
-                # Check nesting level to determine if Polygon or MultiPolygon
-                # Non-nested (Polygon): [[lon, lat], [lon, lat]] -> Depth 2
-                # Standard Polygon: [[[lon, lat], ...]] -> Depth 3
-                # MultiPolygon: [[[[lon, lat], ...]]] -> Depth 4
-                
-                def get_depth(l):
-                    if isinstance(l, list) and len(l) > 0:
-                        return 1 + get_depth(l[0])
-                    return 0
-                
-                depth = get_depth(coords)
-                
-                if depth == 3: # Polygon with one ring
-                    polygons = [coords[0]]
-                elif depth == 4: # MultiPolygon
-                    polygons = [p[0] for p in coords]
-                else: # Fallback assuming Polygon-like
-                    polygons = [coords]
-
+                polygons = _extract_aoi_outer_rings(aoi)
                 for poly_coords in polygons:
                     pixel_points = []
                     for pt in poly_coords:
@@ -506,10 +484,16 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
                             py = (ty - tile_min_y) * tile_size
                             pixel_points.append((px, py))
                     
-                    if pixel_points:
-                        # Draw clean black border for AOI with dynamic width based on zoom
-                        border_width = max(3, current_zoom - 13)  # Thicker border for higher zoom
-                        draw.line(pixel_points, fill='black', width=border_width)
+                    if len(pixel_points) >= 2:
+                        # Ensure polygon ring is closed for complete AOI boundary.
+                        if pixel_points[0] != pixel_points[-1]:
+                            pixel_points.append(pixel_points[0])
+
+                        # Double-stroke outline improves visibility over any basemap tone.
+                        outer_w = max(4, current_zoom - 11)
+                        inner_w = max(2, outer_w - 2)
+                        draw.line(pixel_points, fill='white', width=outer_w)
+                        draw.line(pixel_points, fill='black', width=inner_w)
             except Exception as e:
                 logger.warning(f"Failed to draw AOI outline: {e}")
         
@@ -725,22 +709,7 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
         if draw_aoi_outline and aoi:
             try:
                 draw = ImageDraw.Draw(mosaic)
-                coords = aoi['geometry']['coordinates']
-                
-                def get_depth(l):
-                    if isinstance(l, list) and len(l) > 0:
-                        return 1 + get_depth(l[0])
-                    return 0
-                
-                depth = get_depth(coords)
-                
-                if depth == 3:
-                    polygons = [coords[0]]
-                elif depth == 4:
-                    polygons = [p[0] for p in coords]
-                else:
-                    polygons = [coords]
-
+                polygons = _extract_aoi_outer_rings(aoi)
                 for poly_coords in polygons:
                     pixel_points = []
                     for pt in poly_coords:
@@ -751,9 +720,12 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
                             py = (ty - tile_min_y) * tile_size
                             pixel_points.append((px, py))
                     
-                    if pixel_points:
+                    if len(pixel_points) >= 2:
+                        if pixel_points[0] != pixel_points[-1]:
+                            pixel_points.append(pixel_points[0])
                         border_width = max(4, current_zoom - 11)
-                        # Bright red outline similar to QGIS layouts
+                        # Double stroke keeps AOI visible on both bright and dark imagery.
+                        draw.line(pixel_points, fill='white', width=border_width + 1)
                         draw.line(pixel_points, fill='#FF0000', width=border_width)
             except Exception as e:
                 logger.warning(f"Failed to draw VRA AOI outline: {e}")
@@ -801,6 +773,42 @@ def lonlat_to_tile_xy(lon, lat, zoom):
     y = (1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n
     
     return x, y
+
+
+def _extract_aoi_outer_rings(aoi):
+    """
+    Return a list of outer rings from GeoJSON Feature/Geometry.
+    Supports Polygon and MultiPolygon robustly.
+    """
+    if not aoi:
+        return []
+
+    geom = aoi.get("geometry", aoi)
+    if not isinstance(geom, dict):
+        return []
+
+    gtype = geom.get("type")
+    coords = geom.get("coordinates")
+    if not coords:
+        return []
+
+    if gtype == "Polygon":
+        return [coords[0]] if len(coords) > 0 else []
+
+    if gtype == "MultiPolygon":
+        return [poly[0] for poly in coords if poly and len(poly) > 0]
+
+    # Backward-compatible fallback for malformed structures:
+    # try to infer by depth-like nesting.
+    try:
+        if isinstance(coords[0][0][0], (int, float)):
+            return [coords[0]]
+        if isinstance(coords[0][0][0], list):
+            return [poly[0] for poly in coords if poly and len(poly) > 0]
+    except Exception:
+        pass
+
+    return []
 
 
 def calculate_map_scale(aoi, zoom_level, map_width_pixels=2400):
@@ -3471,45 +3479,44 @@ def generate_report_response(payload: dict):
     pdf_font_bold = "Helvetica-Bold"
     pdf_font_italic = "Helvetica-Oblique"
 
-    # In the generate_report_response function, around line ~1390
-if language == "hi":
-    try:
-        # Try to find and load a Devanagari font
-        hindi_font_path = get_hindi_font_path()
-        
-        if hindi_font_path and os.path.exists(hindi_font_path):
-            # Register with shapable=True for complex script support
-            pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
-            pdf_font_name = "HindiFont"
-            pdf_font_bold = "HindiFont"  
-            pdf_font_italic = "HindiFont"
+    if language == "hi":
+        try:
+            # Try to find and load a Devanagari font
+            hindi_font_path = get_hindi_font_path()
             
-            # Also register bold/italic variants if available
-            bold_path = hindi_font_path.replace("Regular", "Bold")
-            if os.path.exists(bold_path):
-                pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
-                pdf_font_bold = "HindiFont-Bold"
+            if hindi_font_path and os.path.exists(hindi_font_path):
+                # Register with shapable=True for complex script support
+                pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
+                pdf_font_name = "HindiFont"
+                pdf_font_bold = "HindiFont"  
+                pdf_font_italic = "HindiFont"
                 
-            logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
-        else:
-            # Fallback to Arial Unicode MS which has some Devanagari support
-            fallback_paths = [
-                "C:/Windows/Fonts/ARIALUNI.TTF",
-                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-            ]
-            for fb_path in fallback_paths:
-                if os.path.exists(fb_path):
-                    pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
-                    pdf_font_name = "HindiFont"
-                    pdf_font_bold = "HindiFont"
-                    pdf_font_italic = "HindiFont"
-                    logger.warning(f"Using fallback font for Hindi: {fb_path}")
-                    break
+                # Also register bold/italic variants if available
+                bold_path = hindi_font_path.replace("Regular", "Bold")
+                if os.path.exists(bold_path):
+                    pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
+                    pdf_font_bold = "HindiFont-Bold"
+                    
+                logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
             else:
-                logger.warning("No Hindi font found. Text may not render correctly.")
-    except Exception as e:
-        logger.error(f"Failed to load Hindi font: {e}")
-        traceback.print_exc()
+                # Fallback to Arial Unicode MS which has some Devanagari support
+                fallback_paths = [
+                    "C:/Windows/Fonts/ARIALUNI.TTF",
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+                ]
+                for fb_path in fallback_paths:
+                    if os.path.exists(fb_path):
+                        pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
+                        pdf_font_name = "HindiFont"
+                        pdf_font_bold = "HindiFont"
+                        pdf_font_italic = "HindiFont"
+                        logger.warning(f"Using fallback font for Hindi: {fb_path}")
+                        break
+                else:
+                    logger.warning("No Hindi font found. Text may not render correctly.")
+        except Exception as e:
+            logger.error(f"Failed to load Hindi font: {e}")
+            traceback.print_exc()
 
     styles  = getSampleStyleSheet()
     W       = doc.width            # usable width

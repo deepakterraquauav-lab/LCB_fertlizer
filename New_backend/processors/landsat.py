@@ -8,24 +8,26 @@ def apply_scale_factors(img):
     return img.addBands(opt, None, True).addBands(thm, None, True)
 
 def cloud_mask_landsat(img):
-    """Cloud masking for Landsat 8/9"""
-    qa = img.select('QA_PIXEL').bitwiseAnd(int('11111', 2)).eq(0)
-    sat = img.select('QA_RADSAT').eq(0)
-    return img.updateMask(qa).updateMask(sat)
+    """Per-pixel cloud masking for Landsat 8/9 using QA_PIXEL bits 1-4."""
+    qa = img.select('QA_PIXEL')
+    dilated_cloud_clear = qa.bitwiseAnd(1 << 1).eq(0)
+    cirrus_clear = qa.bitwiseAnd(1 << 2).eq(0)
+    cloud_clear = qa.bitwiseAnd(1 << 3).eq(0)
+    cloud_shadow_clear = qa.bitwiseAnd(1 << 4).eq(0)
+    clear_mask = dilated_cloud_clear.And(cirrus_clear).And(cloud_clear).And(cloud_shadow_clear)
+    return img.updateMask(clear_mask)
 
-def get_landsat_collection(aoi, start_date, end_date, cloud_filter=30):
+def get_landsat_collection(aoi, start_date, end_date, cloud_filter=100):
     """Get merged Landsat 8/9 collection with one image per day
     
     Args:
-        cloud_filter: Scene-level cloud cover threshold (default 30%).
-                      We use a relaxed threshold because per-pixel QA masking
-                      handles actual clouds, allowing more images through.
+        cloud_filter: Relaxed scene gate for CLOUD_COVER (default 100%).
     """
     merged = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
                .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
                .filterBounds(aoi) \
                .filterDate(start_date, end_date) \
-               .filter(ee.Filter.lt('CLOUD_COVER', 30))  # Max 30% cloud cover
+               .filter(ee.Filter.lte('CLOUD_COVER', cloud_filter))
     
     # Add date string for grouping
     with_date = merged.map(lambda img: img.set('date_str', img.date().format('YYYY-MM-dd')))
@@ -40,7 +42,7 @@ def get_landsat_collection(aoi, start_date, end_date, cloud_filter=30):
                      .first()
                      .set('selected_date', d)
         )
-    ).sort('system:time_start').filter(ee.Filter.lt('CLOUD_COVER', cloud_filter))
+    ).sort('system:time_start')
     
     return one_per_day
 

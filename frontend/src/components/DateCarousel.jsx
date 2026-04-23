@@ -131,7 +131,14 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
 
     // Filter dates based on layer requirements
     // Requested: remove Landsat dates from the frontend Date Carousel
-    const displayDates = availableDates.filter(d => d.sensor !== 'Landsat');
+    let displayDates = availableDates.filter(d => d.sensor !== 'Landsat');
+
+    // ONLY show dates that have valid data in the chart (filters out completely cloudy days)
+    if (chartData && chartData.length > 0) {
+        // Extract available dates from the chart array (format: YYYY-MM-DD)
+        const validChartDates = new Set(chartData.map(d => d.date));
+        displayDates = displayDates.filter(d => validChartDates.has(d.date));
+    }
 
     // Don't show if no dates found after loading
     if (!loading && displayDates.length === 0) {

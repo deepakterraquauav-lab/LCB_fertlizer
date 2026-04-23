@@ -1074,11 +1074,12 @@ def add_colormap_legend(mosaic_pil: PILImage.Image, layer_type: str, title: Opti
         mosaic_w, mosaic_h = mosaic_pil.size
         title_h = 0         # No space for title
         subtitle_h = 0      # No space for subtitle
-        legend_h = 550      # EXTRA LARGE space for bigger legend + statistics + scale bar
+        has_stats = bool(stats)
+        legend_h = 400      # EXTRA LARGE space for bigger legend + statistics + scale bar
         padding = 40        # Large padding around content for better spacing
         
         # ADD EXTRA WIDTH for stats box on the left side
-        stats_box_width = 970  # Stats box + small margin
+        stats_box_width = 970 if has_stats else 300  # Stats box + small margin
         left_stats_area = stats_box_width  # Reserve space on left for stats
         
         new_w = left_stats_area + mosaic_w + padding * 2  # WIDER canvas with stats area
@@ -1409,9 +1410,10 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
         
         # Image dimensions and layout calculations
         mosaic_w, mosaic_h = mosaic_pil.size
-        legend_h = 550
+        has_stats = bool(stats)
+        legend_h = 400
         padding = 40
-        stats_box_width = 970
+        stats_box_width = 970 if has_stats else 300
         left_stats_area = stats_box_width
         
         new_w = left_stats_area + mosaic_w + padding * 2
@@ -3348,10 +3350,10 @@ def create_perfect_context_map(aoi, zoom=18, padding=150):
         min_x, min_y = lonlat_to_tile_xy(min_lon, max_lat, zoom)
         max_x, max_y = lonlat_to_tile_xy(max_lon, min_lat, zoom)
         
-        tile_min_x = int(math.floor(min_x))
-        tile_max_x = int(math.floor(max_x))
-        tile_min_y = int(math.floor(min_y))
-        tile_max_y = int(math.floor(max_y))
+        tile_min_x = int(math.floor(min_x)) - 1
+        tile_max_x = int(math.floor(max_x)) + 1
+        tile_min_y = int(math.floor(min_y)) - 1
+        tile_max_y = int(math.floor(max_y)) + 1
         
         # Calculate canvas size
         cols = tile_max_x - tile_min_x + 1
@@ -3469,54 +3471,55 @@ def generate_report_response(payload: dict):
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=14 * mm,
-        leftMargin=14 * mm,
-        topMargin=12 * mm,
-        bottomMargin=12 * mm,
+        rightMargin=12 * mm,
+        leftMargin=12 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
     )
 
     pdf_font_name = "Helvetica"
     pdf_font_bold = "Helvetica-Bold"
     pdf_font_italic = "Helvetica-Oblique"
 
-    if language == "hi":
-        try:
-            # Try to find and load a Devanagari font
-            hindi_font_path = get_hindi_font_path()
+    # In the generate_report_response function, around line ~1390
+if language == "hi":
+    try:
+        # Try to find and load a Devanagari font
+        hindi_font_path = get_hindi_font_path()
+        
+        if hindi_font_path and os.path.exists(hindi_font_path):
+            # Register with shapable=True for complex script support
+            pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
+            pdf_font_name = "HindiFont"
+            pdf_font_bold = "HindiFont"  
+            pdf_font_italic = "HindiFont"
             
-            if hindi_font_path and os.path.exists(hindi_font_path):
-                # Register with shapable=True for complex script support
-                pdfmetrics.registerFont(TTFont("HindiFont", hindi_font_path, shapable=True))
-                pdf_font_name = "HindiFont"
-                pdf_font_bold = "HindiFont"  
-                pdf_font_italic = "HindiFont"
+            # Also register bold/italic variants if available
+            bold_path = hindi_font_path.replace("Regular", "Bold")
+            if os.path.exists(bold_path):
+                pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
+                pdf_font_bold = "HindiFont-Bold"
                 
-                # Also register bold/italic variants if available
-                bold_path = hindi_font_path.replace("Regular", "Bold")
-                if os.path.exists(bold_path):
-                    pdfmetrics.registerFont(TTFont("HindiFont-Bold", bold_path, shapable=True))
-                    pdf_font_bold = "HindiFont-Bold"
-                    
-                logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
+            logger.info(f"Successfully loaded Hindi font from: {hindi_font_path}")
+        else:
+            # Fallback to Arial Unicode MS which has some Devanagari support
+            fallback_paths = [
+                "C:/Windows/Fonts/ARIALUNI.TTF",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+            ]
+            for fb_path in fallback_paths:
+                if os.path.exists(fb_path):
+                    pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
+                    pdf_font_name = "HindiFont"
+                    pdf_font_bold = "HindiFont"
+                    pdf_font_italic = "HindiFont"
+                    logger.warning(f"Using fallback font for Hindi: {fb_path}")
+                    break
             else:
-                # Fallback to Arial Unicode MS which has some Devanagari support
-                fallback_paths = [
-                    "C:/Windows/Fonts/ARIALUNI.TTF",
-                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-                ]
-                for fb_path in fallback_paths:
-                    if os.path.exists(fb_path):
-                        pdfmetrics.registerFont(TTFont("HindiFont", fb_path))
-                        pdf_font_name = "HindiFont"
-                        pdf_font_bold = "HindiFont"
-                        pdf_font_italic = "HindiFont"
-                        logger.warning(f"Using fallback font for Hindi: {fb_path}")
-                        break
-                else:
-                    logger.warning("No Hindi font found. Text may not render correctly.")
-        except Exception as e:
-            logger.error(f"Failed to load Hindi font: {e}")
-            traceback.print_exc()
+                logger.warning("No Hindi font found. Text may not render correctly.")
+    except Exception as e:
+        logger.error(f"Failed to load Hindi font: {e}")
+        traceback.print_exc()
 
     styles  = getSampleStyleSheet()
     W       = doc.width            # usable width
@@ -3694,8 +3697,8 @@ def generate_report_response(payload: dict):
                 pil_shot = PILImage.open(map_buf)
                 iw, ih = pil_shot.size
                 
-                max_w = W * 0.65
-                max_h = 65 * mm
+                max_w = W * 0.85
+                max_h = 75 * mm
                 
                 scale = min(max_w / iw, max_h / ih)
                 draw_w = iw * scale
@@ -3727,8 +3730,7 @@ def generate_report_response(payload: dict):
     # ══════════════════════════════════════════════════════════════════
     # Side-by-Side Map & Chart Layout (Auto-paginating)
     # ══════════════════════════════════════════════════════════════════
-    p2_title = lang_strings.get("param_analysis_title", "Detailed Parameter Analysis")
-    story.append(Paragraph(p2_title, ParagraphStyle("P2Title", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=6 if is_hi else 12, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')))
+    story.append(Paragraph("Detailed Parameter Analysis", ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=12, alignment=1)))
 
     MAP_PARAMS = [
         ('pca',         'Crop Health',       'pca',          '#2E7D32', True),
@@ -3738,9 +3740,9 @@ def generate_report_response(payload: dict):
     ]
 
     # Original layout: balanced map & chart so content fits on two pages
-    col_map_w = W * 0.45
-    col_chart_w = W * 0.55
-    cell_h_max = 55 * mm
+    col_map_w = W * 0.50
+    col_chart_w = W * 0.50
+    cell_h_max = 63 * mm
 
     for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
         # 1. Map Image
@@ -3804,9 +3806,9 @@ def generate_report_response(payload: dict):
             ('ALIGN', (0,0), (0, -1), 'CENTER'),
             ('ALIGN', (1,0), (1, -1), 'CENTER'),
             ('SPAN', (0,0), (1,0)), # span label across both
-            ('BOTTOMPADDING', (0,0), (1,0), 6),
+            ('BOTTOMPADDING', (0,0), (1,0), 2),
             ('TOPPADDING', (0,0), (-1,-1), 0),
-            ('BOTTOMPADDING', (0,1), (-1,1), 8),
+            ('BOTTOMPADDING', (0,1), (-1,1), 2),
         ]))
         
         story.append(KeepTogether(row_table))

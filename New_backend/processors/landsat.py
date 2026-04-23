@@ -1,8 +1,12 @@
 import ee
 from . import common
 
+# ---------------------------------------------------------------------------
+# Stage 2 – Per-pixel masking helpers
+# ---------------------------------------------------------------------------
+
 def apply_scale_factors(img):
-    """Apply scale factors to Landsat surface reflectance and thermal bands"""
+    """Apply USGS Collection 2 scale factors to surface reflectance and thermal bands."""
     opt = img.select('SR_B.*').multiply(0.0000275).add(-0.2)
     thm = img.select('ST_B.*').multiply(0.00341802).add(149.0)
     return img.addBands(opt, None, True).addBands(thm, None, True)
@@ -34,53 +38,64 @@ def get_landsat_collection(aoi, start_date, end_date, cloud_filter=100):
     
     # Get unique dates and select best image per day
     unique_dates = with_date.aggregate_array('date_str').distinct()
-    
+
     one_per_day = ee.ImageCollection(
-        unique_dates.map(lambda d: 
-            with_date.filterDate(d, ee.Date(d).advance(1, 'day'))
-                     .sort('CLOUD_COVER')
-                     .first()
-                     .set('selected_date', d)
+        unique_dates.map(
+            lambda d:
+                with_date
+                .filterDate(d, ee.Date(d).advance(1, 'day'))
+                .sort('CLOUD_COVER')
+                .first()
+                .set('selected_date', d)
         )
     ).sort('system:time_start')
     
     return one_per_day
 
+
+# ---------------------------------------------------------------------------
+# Index computation
+# ---------------------------------------------------------------------------
+
 def process_landsat_image(img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=True):
     """
-    Process a single Landsat image: indices, CWSI, etc.
+    Process a single Landsat image: cloud masking → scale factors → indices → CWSI.
+
+    IMPORTANT: cloud_mask_landsat() MUST run BEFORE apply_scale_factors().
+    QA_PIXEL contains integer bit-flags; bitwise operations fail on the
+    floating-point values produced by scale-factor application.
     """
-    # CRITICAL: Cloud mask MUST come BEFORE scale factors
-    # QA bands are integers - bitwise operations fail on floats
+    # Stage 2: Per-pixel QA_PIXEL masking (CFMask) – integers only
     img = cloud_mask_landsat(img)
+
+    # Convert to physical surface-reflectance / brightness-temperature units
     img = apply_scale_factors(img)
-    
-    nir = img.select('SR_B5')
-    red = img.select('SR_B4')
+
+    nir  = img.select('SR_B5')
+    red  = img.select('SR_B4')
     blue = img.select('SR_B2')
-    lst = img.select('ST_B10').rename('LST')
-    
-    # Add NDVI first as it's needed for everything
+    lst  = img.select('ST_B10').rename('LST')
+
+    # NDVI (needed for CWSI and all downstream indices)
     ndvi = img.normalizedDifference(['SR_B5', 'SR_B4']).rename('NDVI')
-    img = img.addBands([ndvi, lst], None, True) # Overwrite LST with renamed
-    
-    # CWSI
+    img  = img.addBands([ndvi, lst], None, True)
+
+    # CWSI – Crop Water Stress Index (Landsat only; requires 30 m LST)
     cwsi = common.calculate_cwsi(lst, ndvi, ndvi_min_img, ndvi_max_img, aoi)
-    
-    # Common Indices (SAVI, etc)
+
+    # SAVI, EVI, LAI, Kc (common across sensors)
     img = common.get_common_indices(img, nir, red, blue, ndvi_min_img, ndvi_max_img)
-    
+
     # Add CWSI band
     img = img.addBands(cwsi)
-    
-    # Apply Water Mask (NDVI > 0) to remove water bodies from ALL layers
-    # This renders water bodies transparent in visualization
+
+    # Water mask: keep only pixels with NDVI > 0 (removes open water bodies)
     water_mask = img.select('NDVI').gt(0)
     img = img.updateMask(water_mask)
-    
-    # Apply Agricultural Mask (Water & Trees) -- Optional
+
+    # Optional: agricultural mask (removes forests, built-up areas, etc.)
     if mask_agri:
         agri_mask = common.get_agri_mask(aoi, img.date())
         img = img.updateMask(agri_mask)
-    
+
     return img

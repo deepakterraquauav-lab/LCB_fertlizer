@@ -175,6 +175,24 @@
     color: rgba(255, 255, 255, 0.9);
 }
 
+.date-cloud-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #0f766e;
+    background: rgba(13, 148, 136, 0.14);
+    border: 1px solid rgba(13, 148, 136, 0.25);
+    border-radius: 8px;
+    padding: 2px 6px;
+    margin-top: 4px;
+    line-height: 1;
+}
+
+.date-card.selected .date-cloud-badge {
+    color: #166534;
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.95);
+}
+
 /* Sensor Badge Styling */
 .sensor-badge {
     font-size: 0.5rem;
@@ -281,6 +299,12 @@
 .date-carousel-container.pane-variant .sensor-badge {
     font-size: 0.4rem;
     padding: 2px 4px;
+}
+
+.date-carousel-container.pane-variant .date-cloud-badge {
+    font-size: 0.45rem;
+    padding: 1px 4px;
+    margin-top: 2px;
 }
 
 .date-carousel-container.pane-variant .date-carousel-header {

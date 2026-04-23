@@ -70,6 +70,7 @@ export function AppProvider({ children }) {
     // Chart data
     const [chartData, setChartData] = useState(null);
     const [activeChartParam, setActiveChartParam] = useState('ndvi');
+    const [availableImageryDates, setAvailableImageryDates] = useState([]);
 
     // Analytics data
     const [ndviStats, setNdviStats] = useState(null);
@@ -131,6 +132,7 @@ export function AppProvider({ children }) {
         setIrrigationCalendar(null);
         setAddedLayers([]);
         setSelectedLayer('');
+        setAvailableImageryDates([]);
     }, []);
 
     const value = {
@@ -192,6 +194,8 @@ export function AppProvider({ children }) {
         setChartData,
         activeChartParam,
         setActiveChartParam,
+        availableImageryDates,
+        setAvailableImageryDates,
 
         // Analytics
         ndviStats,

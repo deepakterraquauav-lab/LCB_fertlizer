@@ -69,7 +69,7 @@ const paramColors = {
 };
 
 function ChartPanel({ mode = 'overlay' }) {
-    const { chartData, activeChartParam, setActiveChartParam, isDarkMode } = useApp();
+    const { chartData, activeChartParam, setActiveChartParam, isDarkMode, availableImageryDates } = useApp();
     const [selectedWeatherParam, setSelectedWeatherParam] = useState('eto');
     const [isCollapsed, setIsCollapsed] = useState(true); // Default collapsed
     const [isExpanded, setIsExpanded] = useState(false); // Modal state
@@ -94,47 +94,65 @@ function ChartPanel({ mode = 'overlay' }) {
             return null;
         }
 
-        let labels = chartData.map(d => d.date);
+        const imageryDateSet = new Set(availableImageryDates || []);
+        const sourceData = imageryDateSet.size > 0
+            ? chartData.filter(d => d?.date && imageryDateSet.has(d.date))
+            : chartData;
+
         let dataKey = activeChartParam;
-        let dataValues = [];
+        const getPointValue = (d) => {
+            if (!d) return null;
 
-        if (activeChartParam === 'weather') {
-            // Find the weather parameter config
-            const weatherConfig = weatherParams.find(p => p.key === selectedWeatherParam);
-            if (weatherConfig) {
-                const backendKey = weatherConfig.dataKey;
-                const transform = weatherConfig.transform;
-
-                dataValues = chartData.map(d => {
-                    const rawValue = d[backendKey];
-                    if (rawValue === null || rawValue === undefined) return null;
-                    const numValue = Number(rawValue);
-                    if (isNaN(numValue)) return null;
-                    return transform ? transform(numValue) : numValue;
-                });
+            if (activeChartParam === 'weather') {
+                const weatherConfig = weatherParams.find(p => p.key === selectedWeatherParam);
+                if (!weatherConfig) return null;
+                const rawValue = d[weatherConfig.dataKey];
+                if (rawValue === null || rawValue === undefined) return null;
+                const numValue = Number(rawValue);
+                if (isNaN(numValue)) return null;
                 dataKey = selectedWeatherParam;
-            } else {
-                dataValues = chartData.map(d => d[selectedWeatherParam] || null);
+                return weatherConfig.transform ? weatherConfig.transform(numValue) : numValue;
             }
-        } else if (activeChartParam === 'lst') {
-            // Convert LST from Kelvin to Celsius
-            dataValues = chartData.map(d => {
+
+            if (activeChartParam === 'lst') {
                 const kelvin = d.lst;
-                return kelvin !== null && kelvin !== undefined ? kelvin - 273.15 : null;
-            });
-        } else if (activeChartParam === 'soilmoisture_mm') {
-            dataValues = chartData.map(d => d.soilmoisture_mm || d.soilmoisture || null);
-        } else if (activeChartParam === 'chlorophyll') {
-            // Backend returns CLRe values under the 'clre' key
-            dataValues = chartData.map(d => d.clre !== null && d.clre !== undefined ? d.clre : null);
-        } else {
-            dataValues = chartData.map(d => d[activeChartParam] || null);
+                if (kelvin === null || kelvin === undefined) return null;
+                return kelvin - 273.15;
+            }
+
+            if (activeChartParam === 'soilmoisture_mm') {
+                const value = d.soilmoisture_mm ?? d.soilmoisture;
+                return value === null || value === undefined || isNaN(Number(value)) ? null : Number(value);
+            }
+
+            if (activeChartParam === 'chlorophyll') {
+                const value = d.clre;
+                return value === null || value === undefined || isNaN(Number(value)) ? null : Number(value);
+            }
+
+            const value = d[activeChartParam];
+            return value === null || value === undefined || isNaN(Number(value)) ? null : Number(value);
+        };
+
+        // Keep only dates where the selected metric has a valid (mean) value.
+        const pairedPoints = sourceData
+            .map(d => ({ date: d.date, value: getPointValue(d) }))
+            .filter(p => p.date && p.value !== null);
+
+        if (pairedPoints.length === 0) {
+            return null;
         }
+
+        const labels = pairedPoints.map(p => p.date);
+        const dataValues = pairedPoints.map(p => p.value);
 
         // Calculate min, max, and mean for each date point
         // For now, we'll use the single value as mean and calculate a range
         // In a real scenario, you might have multiple readings per day
         const validValues = dataValues.filter(v => v !== null && v !== undefined);
+        if (validValues.length === 0) {
+            return null;
+        }
         const globalMin = Math.min(...validValues);
         const globalMax = Math.max(...validValues);
         const range = globalMax - globalMin;

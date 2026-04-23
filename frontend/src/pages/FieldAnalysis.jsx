@@ -1,4 +1,4 @@
-﻿import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AppProvider, useApp } from '../context/AppContext';
 import Header from '../components/Header';
@@ -133,7 +133,8 @@ function AppContent() {
     language,
     setLoadingState,
     notify,
-    removeNotification
+    removeNotification,
+    setAvailableImageryDates
   } = useApp();
 
   const [searchParams] = useSearchParams();
@@ -350,27 +351,55 @@ function AppContent() {
       // NDVI stats and right analytics panel are intentionally not updated/opened
       // here to keep the right panel hidden after fetching data.
 
-      // Trigger DateCarousel refresh
-      setDateCarouselKey(prev => prev + 1);
-
       // IMPORTANT: Stop the loader before showing the success alert
       setSmartLoader(prev => ({ ...prev, visible: false }));
 
       Swal.fire({
-        icon: 'success',
         title: 'Analysis Complete!',
         html: `
-          <div style="text-align: left; font-size: 0.95em;">
-            <p><strong><i class="fas fa-check-circle" style="color:var(--krishi-green)"></i> Status:</strong> Data successfully analyzed.</p>
-            <p><strong><i class="fas fa-database" style="color:#2196f3"></i> Data Points:</strong> ${data.length} records.</p>
-            <p><strong><i class="fas fa-calendar-alt" style="color:#ff9800"></i> Range:</strong> ${startDate} to ${endDate}</p>
+          <div class="swal-summary-card">
+            <div class="swal-summary-item">
+              <div class="swal-summary-icon status">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <div class="swal-summary-info">
+                <span class="swal-summary-label">Status</span>
+                <span class="swal-summary-value">Field data successfully processed</span>
+              </div>
+            </div>
+            <div class="swal-summary-item">
+              <div class="swal-summary-icon data">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="swal-summary-info">
+                <span class="swal-summary-label">Data Points</span>
+                <span class="swal-summary-value">${data.length} Records Analyzed</span>
+              </div>
+            </div>
+            <div class="swal-summary-item">
+              <div class="swal-summary-icon range">
+                <i class="fas fa-calendar-alt"></i>
+              </div>
+              <div class="swal-summary-info">
+                <span class="swal-summary-label">Analysis Period</span>
+                <span class="swal-summary-value">${startDate} — ${endDate}</span>
+              </div>
+            </div>
           </div>
         `,
-        confirmButtonText: 'View Charts',
-        confirmButtonColor: 'var(--krishi-green)',
-        timer: 3000,
-        timerProgressBar: true
+        confirmButtonText: 'View Insights',
+        timer: 5000,
+        timerProgressBar: true,
+        showConfirmButton: true,
+        customClass: {
+          popup: 'premium-swal-popup',
+          title: 'premium-swal-title',
+          htmlContainer: 'premium-swal-html',
+          confirmButton: 'premium-swal-confirm btn'
+        },
+        buttonsStyling: false
       });
+
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -450,6 +479,8 @@ function AppContent() {
     if (!specificDateOverride) {
       setSelectedImageryDate(null);
       setCurrentLayerType(layer);
+      // Show/refresh DateCarousel only when user clicks a layer tab.
+      setDateCarouselKey(prev => prev + 1);
     }
 
     const currentRequestId = Symbol('layer_request');
@@ -930,6 +961,8 @@ function AppContent() {
             {currentLayerType && drawnAOI && dateCarouselKey > 0 && (
               <DateCarousel
                 key={dateCarouselKey} // Force full unmount and remount on trigger
+                autoSelect={false}
+                onDatesLoaded={setAvailableImageryDates}
                 onDateSelect={(date) => {
                   setSelectedImageryDate(date);
                   if (currentLayerType) {

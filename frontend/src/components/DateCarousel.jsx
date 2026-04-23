@@ -3,12 +3,27 @@ import { useApp } from '../context/AppContext';
 import { fetchAvailableDates } from '../utils/api';
 import './DateCarousel.css';
 
-function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true }) {
-    const { drawnAOI, startDate, endDate, isDarkMode, selectedLayer } = useApp();
+function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoSelect = true }) {
+    const { drawnAOI, startDate, endDate, isDarkMode } = useApp();
     const [availableDates, setAvailableDates] = useState([]);
     const [selectedDate, setSelectedDate] = useState(initialDate || null);
     const [loading, setLoading] = useState(false);
     const carouselRef = useRef(null);
+
+    const getCloudPctDisplay = (dateItem) => {
+        // Primary key from updated backend.
+        const primary = dateItem?.cloud_pct_aoi;
+        const fallback = dateItem?.cloud_cover;
+        const raw = primary ?? fallback;
+
+        if (raw === null || raw === undefined || raw === '') {
+            return '0.0';
+        }
+
+        // Handles values like 23.4, "23.4", or "23.4%".
+        const numeric = parseFloat(String(raw).replace('%', '').trim());
+        return Number.isFinite(numeric) ? numeric.toFixed(1) : '0.0';
+    };
 
     useEffect(() => {
         if (drawnAOI && startDate && endDate) {
@@ -41,6 +56,9 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
 
                 // Filter out Landsat here to find the actual latest date we intend to show
                 const filteredDates = dates.filter(d => d.sensor !== 'Landsat');
+                if (onDatesLoaded) {
+                    onDatesLoaded(filteredDates.map(d => d.date));
+                }
 
                 // Auto-select the latest date or initialDate
                 if (filteredDates.length > 0) {
@@ -64,9 +82,15 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
                 }
             } else {
                 console.error('DateCarousel: Response not successful:', response);
+                if (onDatesLoaded) {
+                    onDatesLoaded([]);
+                }
             }
         } catch (error) {
             console.error('DateCarousel: Failed to load available dates:', error);
+            if (onDatesLoaded) {
+                onDatesLoaded([]);
+            }
         } finally {
             setLoading(false);
         }
@@ -87,15 +111,6 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
                 behavior: 'smooth'
             });
         }
-    };
-
-    const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        }).replace(/\//g, '-');
     };
 
     if (!drawnAOI) {
@@ -123,17 +138,6 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
         return null;
     }
 
-    // Helper function to get sensor display name
-    const getSensorDisplay = (sensor) => {
-        if (sensor === 'Landsat') return 'L8/9';
-        if (sensor === 'Sentinel-1') return 'S1/SMAP';
-        if (sensor === 'Sentinel-2') {
-            // Show S2/MODIS for LST layer
-            return selectedLayer === 'lst' ? 'S2/MODIS' : 'S2';
-        }
-        return sensor; // fallback
-    };
-
     return (
         <div className={`date-carousel-container ${isDarkMode ? 'dark' : ''} ${variant === 'pane' ? 'pane-variant' : ''}`}>
             <div className="date-carousel-header">
@@ -157,6 +161,7 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
                         const month = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
                         const year = dateObj.getFullYear();
                         const isSelected = selectedDate === dateItem.date;
+                        const cloudPct = getCloudPctDisplay(dateItem);
 
                         return (
                             <div
@@ -175,6 +180,9 @@ function DateCarousel({ onDateSelect, variant, initialDate, autoSelect = true })
                                     <div className="date-day">{day}</div>
                                     <div className="date-month">{month}</div>
                                     <div className="date-year">{year}</div>
+                                </div>
+                                <div className="date-cloud-badge" title="AOI cloud proxy from bad pixels / valid AOI pixels">
+                                    {cloudPct}%
                                 </div>
 
                             </div>

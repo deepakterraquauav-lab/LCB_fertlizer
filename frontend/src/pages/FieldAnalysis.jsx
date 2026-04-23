@@ -960,8 +960,8 @@ function AppContent() {
             {/* Date Carousel */}
             {currentLayerType && drawnAOI && dateCarouselKey > 0 && (
               <DateCarousel
-                key={dateCarouselKey} // Force full unmount and remount on trigger
                 autoSelect={false}
+                refreshToken={dateCarouselKey}
                 onDatesLoaded={setAvailableImageryDates}
                 onDateSelect={(date) => {
                   setSelectedImageryDate(date);

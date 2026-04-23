@@ -3,12 +3,25 @@ import { useApp } from '../context/AppContext';
 import { fetchAvailableDates } from '../utils/api';
 import './DateCarousel.css';
 
-function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoSelect = true }) {
+function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoSelect = true, refreshToken = 0 }) {
     const { drawnAOI, startDate, endDate, isDarkMode } = useApp();
     const [availableDates, setAvailableDates] = useState([]);
     const [selectedDate, setSelectedDate] = useState(initialDate || null);
     const [loading, setLoading] = useState(false);
     const carouselRef = useRef(null);
+    const isMountedRef = useRef(true);
+    const autoSelectTimeoutRef = useRef(null);
+
+    useEffect(() => {
+        // Important for React StrictMode (dev): setup/cleanup may run twice.
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            if (autoSelectTimeoutRef.current) {
+                clearTimeout(autoSelectTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const getCloudPctDisplay = (dateItem) => {
         // Primary key from updated backend.
@@ -26,12 +39,10 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
     };
 
     useEffect(() => {
-        if (drawnAOI && startDate && endDate) {
-            loadAvailableDates();
-        }
-        // Only run once on mount since the key prop will handle refreshes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        if (!drawnAOI || !startDate || !endDate) return;
+        loadAvailableDates();
+        // refreshToken is controlled by parent when layer button is clicked
+    }, [drawnAOI, startDate, endDate, refreshToken]);
 
     // Reset selection when layer or critical parameters change (ignore selectedDate to prevent loop)
     useEffect(() => {
@@ -51,6 +62,7 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
 
             if (response.success) {
                 const dates = response.date_info || [];
+                if (!isMountedRef.current) return;
                 setAvailableDates(dates);
                 console.log('DateCarousel: Loaded', dates.length, 'dates');
 
@@ -62,6 +74,9 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
 
                 // Auto-select the latest date or initialDate
                 if (filteredDates.length > 0) {
+                    if (autoSelectTimeoutRef.current) {
+                        clearTimeout(autoSelectTimeoutRef.current);
+                    }
                     let dateToSelect;
                     if (initialDate && filteredDates.some(d => d.date === initialDate)) {
                         dateToSelect = initialDate;
@@ -70,7 +85,8 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
                     }
 
                     // Small delay to ensure state and parent components are ready
-                    setTimeout(() => {
+                    autoSelectTimeoutRef.current = setTimeout(() => {
+                        if (!isMountedRef.current) return;
                         setSelectedDate(dateToSelect);
                         // Only fire the callback if autoSelect is enabled.
                         // ComparisonView passes autoSelect=false to avoid re-triggering
@@ -92,7 +108,9 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
                 onDatesLoaded([]);
             }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 
@@ -132,13 +150,6 @@ function DateCarousel({ onDateSelect, onDatesLoaded, variant, initialDate, autoS
     // Filter dates based on layer requirements
     // Requested: remove Landsat dates from the frontend Date Carousel
     let displayDates = availableDates.filter(d => d.sensor !== 'Landsat');
-
-    // ONLY show dates that have valid data in the chart (filters out completely cloudy days)
-    if (chartData && chartData.length > 0) {
-        // Extract available dates from the chart array (format: YYYY-MM-DD)
-        const validChartDates = new Set(chartData.map(d => d.date));
-        displayDates = displayDates.filter(d => validChartDates.has(d.date));
-    }
 
     // Don't show if no dates found after loading
     if (!loading && displayDates.length === 0) {

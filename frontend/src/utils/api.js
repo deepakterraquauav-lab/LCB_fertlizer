@@ -1,6 +1,9 @@
 // API utility for backend communication
 import { auth } from '../config/firebase';
 
+// Use environment variable for backend URL in production, fallback to relative for dev (proxy)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 /**
  * Get authentication headers with Firebase ID token
  */
@@ -26,8 +29,9 @@ export async function getAuthHeaders() {
 // Fetch daily data from backend - matches app2.html logic exactly
 export async function fetchDailyData(aoi, startDate, endDate, fieldId = null) {
     const headers = await getAuthHeaders();
-    const response = await fetch('/get_daily_data', {
+    const response = await fetch(`${API_BASE_URL}/get_daily_data`, {
         method: 'POST',
+
         headers,
         body: JSON.stringify({
             aoi: aoi,
@@ -58,7 +62,7 @@ export async function fetchDailyData(aoi, startDate, endDate, fieldId = null) {
 export async function fetchIrrigationCalendar(aoi, startDate, endDate, fieldId = null) {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch('/get_irrigation_calendar', {
+        const response = await fetch(`${API_BASE_URL}/get_irrigation_calendar`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -86,7 +90,7 @@ export async function fetchIrrigationCalendar(aoi, startDate, endDate, fieldId =
 export async function fetchAvailableDates(aoi, startDate, endDate) {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch('/get_available_dates', {
+        const response = await fetch(`${API_BASE_URL}/get_available_dates`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -113,7 +117,7 @@ export async function fetchAvailableDates(aoi, startDate, endDate) {
 export async function fetchLandCoverAnalysis(aoi, startDate, endDate, timeScale = 'monthly') {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch('/get_land_cover_analysis', {
+        const response = await fetch(`${API_BASE_URL}/get_land_cover_analysis`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -153,7 +157,7 @@ export async function fetchGeeTile(aoi, layer, startDate, endDate, specificDate 
             requestBody.end_date = endDate;
         }
 
-        const response = await fetch('/get_gee_tile', {
+        const response = await fetch(`${API_BASE_URL}/get_gee_tile`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -186,7 +190,7 @@ export async function fetchVraMap(aoi, parameter, date, startDate, endDate, sign
             end_date: endDate
         };
 
-        const response = await fetch('/get_vra_map', {
+        const response = await fetch(`${API_BASE_URL}/get_vra_map`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -211,7 +215,7 @@ export async function fetchVraMap(aoi, parameter, date, startDate, endDate, sign
 // Generate PDF report
 export async function generateReport(reportData) {
     try {
-        const response = await fetch('/generate_report', {
+        const response = await fetch(`${API_BASE_URL}/generate_report`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -301,7 +305,7 @@ export async function reverseGeocode(lat, lng) {
 export async function getFields() {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch('/api/get_fields', { headers });
+        const response = await fetch(`${API_BASE_URL}/api/get_fields`, { headers });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -322,7 +326,7 @@ export async function getFields() {
 export async function saveField(fieldData) {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch('/api/save_field', {
+        const response = await fetch(`${API_BASE_URL}/api/save_field`, {
             method: 'POST',
             headers,
             body: JSON.stringify(fieldData)
@@ -347,7 +351,7 @@ export async function saveField(fieldData) {
 export async function updateField(fieldId, fieldData) {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch(`/api/update_field/${fieldId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/update_field/${fieldId}`, {
             method: 'PUT',
             headers,
             body: JSON.stringify(fieldData)
@@ -372,7 +376,7 @@ export async function updateField(fieldId, fieldData) {
 export async function deleteField(fieldId) {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch(`/api/delete_field/${fieldId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/delete_field/${fieldId}`, {
             method: 'DELETE',
             headers
         });
@@ -395,7 +399,7 @@ export async function deleteField(fieldId) {
  */
 export async function getLastIrrigationCalendar() {
     try {
-        const response = await fetch('/api/get_last_irrigation_calendar');
+        const response = await fetch(`${API_BASE_URL}/api/get_last_irrigation_calendar`);
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));

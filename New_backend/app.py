@@ -58,8 +58,8 @@ except Exception as e:
     print(f"Firebase Init Warning: {e}")
 
 app = Flask(__name__)
-CORS(app) # Enable CORS for all routes
-app.secret_key = 'your-secret-key'
+CORS(app, resources={r"/*": {"origins": "*"}}) # Enable CORS for all routes (Prod safe)
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-at-least-32-chars-long')
 app.permanent_session_lifetime = timedelta(days=7)
 
 # Configure logging
@@ -1971,4 +1971,5 @@ def get_land_cover_analysis():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=6000)
+    port = int(os.environ.get('PORT', 6000))
+    app.run(host='0.0.0.0', port=port, debug=True)

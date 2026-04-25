@@ -3464,7 +3464,7 @@ def generate_report_response(payload: dict):
     end_date        = payload.get("end_date", "")
     metrics         = payload.get("metrics") or {}
     series          = payload.get("series") or []
-    backend_url     = payload.get("backend_url") or "http://localhost:6000"
+    backend_url     = payload.get("backend_url") or os.environ.get("BACKEND_URL") or "http://localhost:6000"
     logo_path       = get_logo_path(payload.get("logo_path"))
 
     buffer = io.BytesIO()

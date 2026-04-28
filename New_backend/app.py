@@ -278,7 +278,10 @@ def get_last_irrigation_calendar():
 
 @app.route('/')
 def index():
-    return render_template('app2.html')
+    return jsonify({
+        "status": "success", 
+        "message": "Backend API is Live and working perfectly! 🎉"
+    }), 200
 
 @app.route('/health')
 def health_check():

@@ -59,14 +59,9 @@ except Exception as e:
 
 app = Flask(__name__)
 
-# Configure CORS to allow requests from multiple origins (Local Dev + Production)
-allowed_origins = [
-    "http://localhost:4000",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://lcb-vite-frontend.onrender.com"
-]
-CORS(app, resources={r"/*": {"origins": allowed_origins}})
+# Configure CORS to allow requests from any origin during initial deployment
+# (You can restrict this later to your specific frontend URL)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-at-least-32-chars-long')
 app.permanent_session_lifetime = timedelta(days=7)

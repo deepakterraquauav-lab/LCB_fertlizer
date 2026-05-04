@@ -14,10 +14,13 @@ def initialize_ee():
         # 1. Try to load from environment variable first (Best for Render/Heroku)
         gee_json = os.getenv('GEE_JSON_KEY')
         if gee_json:
+            gee_json = gee_json.strip() # Remove any accidental spaces/newlines
+            print(f"GEE_JSON_KEY found (length: {len(gee_json)})")
             try:
                 # The env var can be the JSON string or a path to a file
                 if gee_json.startswith('{'):
                     info = json.loads(gee_json)
+                    # Use client_email and private_key from the JSON
                     credentials = ee.ServiceAccountCredentials(info['client_email'], key_data=info['private_key'])
                     ee.Initialize(credentials)
                     print("Earth Engine initialized successfully via GEE_JSON_KEY environment variable.")

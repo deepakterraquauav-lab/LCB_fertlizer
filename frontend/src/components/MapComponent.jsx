@@ -230,7 +230,12 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
         const map = mapInstanceRef.current;
         if (!map) return;
 
-        map.setView([lat, lon], 11);
+        // If the search name is just the coordinates, zoom in very close (18).
+        // Otherwise zoom to 15 (better for finding fields than 11).
+        const isCoordinate = name && name.includes(lat.toString()) && name.includes(lon.toString());
+        const zoomLevel = isCoordinate ? 18 : 15;
+
+        map.setView([lat, lon], zoomLevel);
 
         // Remove previous marker
         if (currentSearchMarkerRef.current) {
@@ -242,7 +247,7 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
             .addTo(map)
             .bindPopup(`
         <div style="text-align:center;">
-          <strong>${name.split(',')[0]}</strong><br>
+          <strong>${isCoordinate ? 'Selected Location' : name.split(',')[0]}</strong><br>
           <small>${name}</small>
         </div>
       `)

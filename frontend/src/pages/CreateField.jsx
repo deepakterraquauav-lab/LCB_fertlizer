@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import 'leaflet-draw';
 import Swal from 'sweetalert2';
-import { saveField } from '../utils/api';
+import { saveField, parseCoordinates } from '../utils/api';
 import { kml } from '@mapbox/togeojson';
 import './CreateField.css';
 
@@ -472,23 +472,17 @@ function CreateField() {
         setIsSearching(true);
 
         try {
-            // Check for exact coordinates
-            const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
-            const match = searchQuery.match(coordRegex);
+            // Check for exact coordinates using the robust parser
+            const coords = parseCoordinates(searchQuery);
 
             let locationData = null;
 
-            if (match) {
-                const lat = parseFloat(match[1]);
-                const lon = parseFloat(match[2]);
-
-                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-                    locationData = {
-                        lat: lat,
-                        lon: lon,
-                        display_name: `Exact Coordinates: ${lat}, ${lon}`
-                    };
-                }
+            if (coords) {
+                locationData = {
+                    lat: coords.lat,
+                    lon: coords.lon,
+                    display_name: `Exact Coordinates: ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`
+                };
             }
 
             if (!locationData) {

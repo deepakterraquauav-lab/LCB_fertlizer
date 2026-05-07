@@ -237,27 +237,60 @@ export async function generateReport(reportData) {
     }
 }
 
+/**
+ * Parse various coordinate formats (DD, DMS) into decimal lat/lon
+ */
+export function parseCoordinates(query) {
+    if (!query) return null;
+    const q = query.trim();
+
+    // 1. Decimal Degrees (DD) - e.g. 29.81455, 78.63661
+    const ddRegex = /^\s*(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)\s*$/;
+    const ddMatch = q.match(ddRegex);
+    if (ddMatch) {
+        const lat = parseFloat(ddMatch[1]);
+        const lon = parseFloat(ddMatch[3]);
+        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+            return { lat, lon };
+        }
+    }
+
+    // 2. Degrees Minutes Seconds (DMS) - e.g. 29°48'52.4"N 78°38'11.8"E
+    // We'll use a more flexible regex that doesn't strictly require splitting
+    const dmsRegex = /(\d{1,3})[°\s]+(\d{1,2})['\s]+(\d{1,2}(?:\.\d+)?)["\s]*([NS])[,\s]+(\d{1,3})[°\s]+(\d{1,2})['\s]+(\d{1,2}(?:\.\d+)?)["\s]*([EW])/i;
+    const dmsMatch = q.match(dmsRegex);
+
+    if (dmsMatch) {
+        const convert = (d, m, s, dir) => {
+            let dec = parseFloat(d) + parseFloat(m) / 60 + parseFloat(s) / 3600;
+            if (dir.toUpperCase() === 'S' || dir.toUpperCase() === 'W') dec *= -1;
+            return dec;
+        };
+
+        const lat = convert(dmsMatch[1], dmsMatch[2], dmsMatch[3], dmsMatch[4]);
+        const lon = convert(dmsMatch[5], dmsMatch[6], dmsMatch[7], dmsMatch[8]);
+
+        if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+            return { lat, lon };
+        }
+    }
+    return null;
+}
+
 // Search location using Nominatim API or exact coordinates
 export async function searchLocation(query) {
     try {
-        // Regex to check if the query looks like "lat, lon" or "lat lon"
-        const coordRegex = /^\s*(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)\s*$/;
-        const match = query.match(coordRegex);
+        // Try parsing as coordinates first
+        const coords = parseCoordinates(query);
 
-        if (match) {
+        if (coords) {
             // It's a coordinate pair! Skip API and return exactly those coordinates.
-            const lat = parseFloat(match[1]);
-            const lon = parseFloat(match[3]);
-
-            // Basic validation for realistic geographic bounds
-            if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-                return [{
-                    lat: lat.toString(),
-                    lon: lon.toString(),
-                    display_name: `${lat}, ${lon}`, // Clean display name for exact coords
-                    place_id: `coord-${Date.now()}` // Mock ID for React maps
-                }];
-            }
+            return [{
+                lat: coords.lat.toString(),
+                lon: coords.lon.toString(),
+                display_name: `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`, // Clean display name
+                place_id: `coord-${Date.now()}` // Mock ID for React maps
+            }];
         }
 
         const response = await fetch(

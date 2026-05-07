@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { t, setLanguage as setLang } from '../utils/translations';
-import { searchLocation } from '../utils/api';
+import { searchLocation, parseCoordinates } from '../utils/api';
 import Swal from 'sweetalert2';
 import './Header.css';
 
@@ -52,26 +52,16 @@ function Header({ onLocationSelect }) {
                 setShowResults(true);
             }
 
-            const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
-            const match = query.match(coordRegex);
-
+            const coords = parseCoordinates(query);
             let results = [];
 
-            if (match) {
-                const lat = parseFloat(match[1]);
-                const lon = parseFloat(match[2]);
-
-                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-                    // Agar exact coordinate hai, toh fake result banake direct return kar do (API bypass)
-                    results = [{
-                        lat: lat.toString(),
-                        lon: lon.toString(),
-                        display_name: `${lat}, ${lon}` // Dropdown mein exactly yahi dikhega
-                    }];
-                }
-            }
-            if (results.length === 0) {
-                results = await searchLocation(query);
+            if (coords) {
+                // Agar exact coordinate hai, toh fake result banake direct return kar do (API bypass)
+                results = [{
+                    lat: coords.lat.toString(),
+                    lon: coords.lon.toString(),
+                    display_name: `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}` // Dropdown mein exactly yahi dikhega
+                }];
             }
 
             // Agar upar coordinates nahi mile, tabhi original API call chalegi
@@ -111,8 +101,10 @@ function Header({ onLocationSelect }) {
             onLocationSelect(lat, lon, name);
         }
 
-        // Update search box
-        setSearchQuery(name.split(',')[0]);
+        // Update search box - if it's a coordinate, show full coordinate
+        const isCoordinate = name.includes(lat.toString()) && name.includes(lon.toString());
+        setSearchQuery(isCoordinate ? name : name.split(',')[0]);
+        
         setShowResults(false);
         setSearchResults([]);
 
@@ -120,7 +112,7 @@ function Header({ onLocationSelect }) {
         Swal.fire({
             icon: 'success',
             title: t('opt_location_found'),
-            text: `${t('opt_centered_map')} ${name.split(',')[0]}`,
+            text: `${t('opt_centered_map')} ${isCoordinate ? name : name.split(',')[0]}`,
             confirmButtonColor: 'var(--krishi-green)',
             timer: 2000,
             showConfirmButton: false,

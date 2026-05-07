@@ -858,6 +858,43 @@ function AppContent() {
       }
 
       const computedMetrics = calculateMetrics(chartData);
+
+      // --- Compute AOI centroid lat/lon and area in hectares ---
+      let centroidLat = null;
+      let centroidLon = null;
+      let areaHa = 0;
+      try {
+        const geom = drawnAOI?.geometry;
+        if (geom?.coordinates) {
+          const ring = geom.type === 'Polygon'
+            ? geom.coordinates[0]
+            : geom.coordinates[0][0]; // MultiPolygon fallback
+
+          if (ring && ring.length > 0) {
+            // Centroid (simple average)
+            const sumLon = ring.reduce((s, c) => s + c[0], 0);
+            const sumLat = ring.reduce((s, c) => s + c[1], 0);
+            centroidLon = parseFloat((sumLon / ring.length).toFixed(6));
+            centroidLat = parseFloat((sumLat / ring.length).toFixed(6));
+
+            // Area via shoelace formula (in degrees²) → convert to m² → hectares
+            let areaDegs = 0;
+            for (let i = 0; i < ring.length - 1; i++) {
+              areaDegs += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+            }
+            areaDegs = Math.abs(areaDegs) / 2;
+            // Approximate conversion: 1° lat ≈ 111,320 m; 1° lon ≈ 111,320 * cos(lat) m
+            const latRad = (centroidLat * Math.PI) / 180;
+            const metersPerDegLat = 111320;
+            const metersPerDegLon = 111320 * Math.cos(latRad);
+            const areaM2 = areaDegs * metersPerDegLat * metersPerDegLon;
+            areaHa = parseFloat((areaM2 / 10000).toFixed(4));
+          }
+        }
+      } catch (e) {
+        console.warn('Could not compute AOI centroid/area:', e);
+      }
+
       const reportPayload = {
         aoi: drawnAOI,
         start_date: startDate,
@@ -868,7 +905,9 @@ function AppContent() {
         metrics: computedMetrics,
         language: language || 'en',
         crop_name: 'General Crop',
-        area_ha: 0,
+        area_ha: areaHa,
+        centroid_lat: centroidLat,
+        centroid_lon: centroidLon,
         location: '',
         map_screenshot: mapScreenshot,
       };

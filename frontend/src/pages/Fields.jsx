@@ -137,6 +137,38 @@ function Fields() {
     const totalAreaAcres = fields.reduce((sum, f) => sum + parseFloat(f.areaAcres || 0), 0);
     const totalAreaHectares = fields.reduce((sum, f) => sum + parseFloat(f.areaHectares || 0), 0);
 
+    // Helper to get lat/long from field geometry
+    const getFieldCentroid = (field) => {
+        if (!field || !field.geometry) return null;
+
+        try {
+            const { type, coordinates, center } = field.geometry;
+
+            if (type === 'Circle' && center) {
+                return { lat: center[0], lon: center[1] };
+            }
+
+            let coords = [];
+            if (type === 'Polygon') {
+                coords = coordinates[0];
+            } else if (type === 'MultiPolygon') {
+                coords = coordinates[0][0];
+            }
+
+            if (coords && coords.length > 0) {
+                const sumLon = coords.reduce((s, c) => s + c[0], 0);
+                const sumLat = coords.reduce((s, c) => s + c[1], 0);
+                return {
+                    lat: (sumLat / coords.length).toFixed(6),
+                    lon: (sumLon / coords.length).toFixed(6)
+                };
+            }
+        } catch (e) {
+            console.error('Error calculating centroid:', e);
+        }
+        return null;
+    };
+
     return (
         <div className="fields-page">
             <Toaster position="top-center" reverseOrder={false} />
@@ -241,6 +273,16 @@ function Fields() {
                                             <span className="stat-label">Acres</span>
                                         </div>
                                     </div>
+
+                                    {/* AOI Location Section */}
+                                    {getFieldCentroid(field) && (
+                                        <div className="field-location">
+                                            <i className="fas fa-map-marker-alt"></i>
+                                            <span>
+                                                {getFieldCentroid(field).lat}, {getFieldCentroid(field).lon}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="field-card-footer">
                                     <span className="field-footer-text">View Analysis</span>

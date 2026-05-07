@@ -449,6 +449,28 @@
     margin: 0;
 }
 
+.field-location {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-color);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.field-location i {
+    color: var(--krishi-green);
+    font-size: 14px;
+}
+
+.field-location span {
+    font-family: 'Monaco', 'Consolas', monospace;
+    letter-spacing: -0.2px;
+}
+
 /* Card Footer */
 .field-card-footer {
     padding: 16px 20px;

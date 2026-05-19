@@ -243,7 +243,21 @@ function MapComponent({ onAOICreated, onLocationSelect, fieldId }) {
         }
 
         // Add new marker
-        currentSearchMarkerRef.current = L.marker([lat, lon])
+        const customIcon = L.divIcon({
+            className: 'custom-gps-marker',
+            html: `
+                <div class="marker-pin-wrapper">
+                    <div class="marker-pulse"></div>
+                    <div class="marker-pin">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                </div>
+            `,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+        currentSearchMarkerRef.current = L.marker([lat, lon], { icon: customIcon })
             .addTo(map)
             .bindPopup(`
         <div style="text-align:center;">

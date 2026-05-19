@@ -4076,8 +4076,15 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes swal-fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .swal-summary-item {
@@ -4158,4 +4165,149 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
 .premium-swal-confirm:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4) !important;
+}
+
+/* Custom premium pulsing GPS map marker styling */
+.custom-gps-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.marker-pin-wrapper {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  background: linear-gradient(135deg, #00c853 0%, #00e760 100%);
+  position: absolute;
+  transform: rotate(-45deg);
+  left: 4px;
+  top: 4px;
+  box-shadow: 0 0 15px rgba(0, 200, 83, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  z-index: 10;
+  transition: transform 0.2s ease-in-out;
+}
+
+.marker-pin:hover {
+  transform: rotate(-45deg) scale(1.1);
+}
+
+.marker-pin i {
+  color: #ffffff;
+  transform: rotate(45deg);
+  font-size: 13px;
+}
+
+.marker-pulse {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 200, 83, 0.4);
+  border-radius: 50%;
+  z-index: 1;
+  transform: scale(0.5);
+  animation: markerPulse 1.8s ease-out infinite;
+  bottom: -10px;
+}
+
+@keyframes markerPulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+/* Cascading Purple SweetAlerts */
+.premium-purple-swal {
+  border-radius: 16px !important;
+  border: 2px solid #7c4dff !important;
+  box-shadow: 0 0 30px rgba(124, 77, 255, 0.3) !important;
+}
+
+.purple-confirm-btn {
+  background: linear-gradient(135deg, #7c4dff 0%, #6200ea 100%) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  box-shadow: 0 4px 14px rgba(124, 77, 255, 0.4) !important;
+}
+
+.purple-confirm-btn:hover {
+  background: linear-gradient(135deg, #9e70ff 0%, #651fff 100%) !important;
+}
+
+.purple-cancel-btn {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+}
+
+/* premium-krishi-swal styling */
+.premium-krishi-swal {
+  border-radius: 16px !important;
+  border: 2px solid #00c853 !important;
+  box-shadow: 0 0 30px rgba(0, 200, 83, 0.3) !important;
+}
+
+.krishi-confirm-btn {
+  background: linear-gradient(135deg, #00c853 0%, #00e760 100%) !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  box-shadow: 0 4px 14px rgba(0, 200, 83, 0.4) !important;
+}
+
+.krishi-cancel-btn {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+}
+
+/* Glassmorphic input and select overrides for premium krishi swal */
+.swal2-input-custom,
+.swal2-select-custom {
+  background: #f8fafc !important;
+  border: 1px solid rgba(0, 200, 83, 0.3) !important;
+  color: #333333 !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  height: 46px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.3s ease !important;
+  outline: none !important;
+}
+
+.swal2-input-custom::placeholder {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+.swal2-input-custom:focus,
+.swal2-select-custom:focus {
+  border-color: #00c853 !important;
+  box-shadow: 0 0 10px rgba(0, 200, 83, 0.3) !important;
+  background: #ffffff !important;
+}
+
+/* Ensure selected options look nice in light mode custom dropdown */
+.swal2-select-custom option {
+  background-color: #ffffff !important;
+  color: #333333 !important;
 }

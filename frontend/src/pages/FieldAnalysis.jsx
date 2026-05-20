@@ -256,11 +256,11 @@ function AppContent() {
     const end = new Date(endDate);
     const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
-    if (diffDays > 365) {
+    if (diffDays > 1096) {
       Swal.fire({
         icon: 'warning',
         title: 'Date Range Too Large',
-        text: 'Please select ≤ 12 months (≤ 365 days).',
+        text: 'Please select ≤ 3 years (≤ 1096 days).',
         confirmButtonColor: 'var(--krishi-green)',
       });
       return;

@@ -438,10 +438,10 @@ function Fields() {
                     </div>
                 ) : (
                     /* Premium Table View */
-                    <div className="fields-table-container" style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(10px)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(255,255,255,0.05)', overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', minWidth: '900px' }}>
+                    <div className="fields-table-container" style={{ background: 'var(--card-bg)', backdropFilter: 'blur(10px)', borderRadius: '12px', padding: '16px', border: '1px solid var(--border-color)', overflowX: 'auto', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.02)' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-main)', minWidth: '900px' }}>
                             <thead>
-                                <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.05)', textAlign: 'left', color: '#aaa', fontSize: '13px' }}>
+                                <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', color: 'var(--text-secondary)', fontSize: '13px' }}>
                                     <th style={{ padding: '12px 8px' }}>Field Name</th>
                                     <th style={{ padding: '12px 8px' }}>Coordinates</th>
                                     <th style={{ padding: '12px 8px' }}>Location (Village/District/State)</th>
@@ -454,22 +454,22 @@ function Fields() {
                                 {fields.map((field, index) => (
                                     <tr 
                                         key={field.id} 
-                                        style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 0.2s', fontSize: '14px' }}
+                                        style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'background 0.2s', fontSize: '14px' }}
                                         onClick={() => handleFieldClick(field)}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'}
                                         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                     >
-                                        <td style={{ padding: '16px 8px', fontWeight: 600 }}>{field.name}</td>
-                                        <td style={{ padding: '16px 8px' }}>
+                                        <td style={{ padding: '16px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{field.name}</td>
+                                        <td style={{ padding: '16px 8px', color: 'var(--text-secondary)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <i className="fas fa-compass" style={{ color: '#00c853' }}></i>
                                                 <span>Lat: {parseFloat(field.latitude || getFieldCentroid(field)?.lat || 0).toFixed(5)}, Lng: {parseFloat(field.longitude || getFieldCentroid(field)?.lon || 0).toFixed(5)}</span>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '16px 8px', color: '#bbb' }}>
+                                        <td style={{ padding: '16px 8px', color: 'var(--text-secondary)' }}>
                                             {field.village ? `${field.village}${field.district ? `, ${field.district}` : ''}${field.state ? `, ${field.state}` : ''}` : 'Specify / निर्दिष्ट करें'}
                                         </td>
-                                        <td style={{ padding: '16px 8px' }}>
+                                        <td style={{ padding: '16px 8px', color: 'var(--text-main)' }}>
                                             {field.cropName ? (
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                     <span style={{ fontSize: '11px', background: 'rgba(0,200,83,0.15)', color: '#00c853', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(0,200,83,0.3)', fontWeight: 600, width: 'fit-content' }}>
@@ -481,17 +481,19 @@ function Fields() {
                                                             <span>{field.sowingDate}</span>
                                                             {field.harvestingDate && (
                                                                 <>
-                                                                    <span style={{ color: '#555' }}>|</span>
-                                                                    <i className="fas fa-calendar-alt" style={{ color: '#888' }}></i>
-                                                                    <span style={{ color: '#aaa' }}>{field.harvestingDate}</span>
+                                                                    <span style={{ color: 'var(--text-secondary)' }}>|</span>
+                                                                    <i className="fas fa-calendar-alt" style={{ color: 'var(--text-secondary)' }}></i>
+                                                                    <span style={{ color: 'var(--text-secondary)' }}>{field.harvestingDate}</span>
                                                                 </>
                                                             )}
                                                         </div>
                                                     )}
                                                 </div>
-                                            ) : 'Specify / निर्दिष्ट करें'}
+                                            ) : (
+                                                <span style={{ color: 'var(--text-secondary)' }}>Specify / निर्दिष्ट करें</span>
+                                            )}
                                         </td>
-                                        <td style={{ padding: '16px 8px' }}>
+                                        <td style={{ padding: '16px 8px', color: 'var(--text-main)' }}>
                                             {field.areaHectares} ha / {field.areaAcres} ac
                                         </td>
                                         <td style={{ padding: '16px 8px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>

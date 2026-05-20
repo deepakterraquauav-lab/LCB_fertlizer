@@ -41,6 +41,30 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef(null);
 
+    // Date Mode State
+    const [dateMode, setDateMode] = useState('custom'); // 'custom' or 'baseline'
+    const [baselineDate, setBaselineDate] = useState(new Date().toISOString().split('T')[0]);
+    const [baselineYears, setBaselineYears] = useState(1);
+
+    const handleBaselineDateChange = (e) => {
+        const selectedDate = e.target.value;
+        setBaselineDate(selectedDate);
+        setEndDate(selectedDate);
+        
+        const dateObj = new Date(selectedDate);
+        dateObj.setFullYear(dateObj.getFullYear() - baselineYears);
+        setStartDate(dateObj.toISOString().split('T')[0]);
+    };
+
+    const handleBaselineYearsChange = (e) => {
+        const years = parseInt(e.target.value);
+        setBaselineYears(years);
+        
+        const dateObj = new Date(baselineDate);
+        dateObj.setFullYear(dateObj.getFullYear() - years);
+        setStartDate(dateObj.toISOString().split('T')[0]);
+    };
+
     // Map Controls Tab State
     const [activeMapTab, setActiveMapTab] = useState('select'); // select, aoi, add, clear
     const [managedLayers, setManagedLayers] = useState([]);
@@ -275,37 +299,72 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
             {/* Sidebar Header: Date Range - Made Compact */}
             <div className="sidebar-header">
                 <div className="panel compact-panel">
-                    <h3 className="panel-title" style={{ marginBottom: '8px' }}>
-                        {/* <i className="fa-solid fa-calendar-days"></i> */}
-                        <span>{t('select_date_range')}</span>
-                    </h3>
-                    <div className="date-inputs-row">
-                        <div className="date-field">
-                            <label htmlFor="start">Start</label>
-                            <input
-                                id="start"
-                                type="date"
-                                max={today}
-                                value={startDate}
-                                onChange={handleStartDateChange}
-                            />
-                        </div>
-                        <div className="date-field">
-                            <label htmlFor="end">End</label>
-                            <input
-                                id="end"
-                                type="date"
-                                max={today}
-                                value={endDate}
-                                onChange={handleEndDateChange}
-                            />
-                        </div>
+                    <div className="date-mode-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                        <button 
+                            onClick={() => setDateMode('custom')}
+                            style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid var(--krishi-green)', background: dateMode === 'custom' ? 'var(--krishi-green)' : 'transparent', color: dateMode === 'custom' ? '#fff' : 'var(--text-main)', borderRadius: '4px', cursor: 'pointer' }}
+                        >Custom Range</button>
+                        <button 
+                            onClick={() => setDateMode('baseline')}
+                            style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid var(--krishi-green)', background: dateMode === 'baseline' ? 'var(--krishi-green)' : 'transparent', color: dateMode === 'baseline' ? '#fff' : 'var(--text-main)', borderRadius: '4px', cursor: 'pointer' }}
+                        >Baseline Mode</button>
                     </div>
+
+                    {dateMode === 'custom' ? (
+                        <div className="date-inputs-row">
+                            <div className="date-field">
+                                <label htmlFor="start">Start Date</label>
+                                <input
+                                    id="start"
+                                    type="date"
+                                    max={today}
+                                    value={startDate}
+                                    onChange={handleStartDateChange}
+                                />
+                            </div>
+                            <div className="date-field">
+                                <label htmlFor="end">End Date</label>
+                                <input
+                                    id="end"
+                                    type="date"
+                                    max={today}
+                                    value={endDate}
+                                    onChange={handleEndDateChange}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="date-inputs-row" style={{ flexDirection: 'column', gap: '10px' }}>
+                            <div className="date-field" style={{ width: '100%' }}>
+                                <label htmlFor="baseline">Baseline Date</label>
+                                <input
+                                    id="baseline"
+                                    type="date"
+                                    max={today}
+                                    value={baselineDate}
+                                    onChange={handleBaselineDateChange}
+                                    style={{ width: '100%', boxSizing: 'border-box' }}
+                                />
+                            </div>
+                            <div className="date-field" style={{ width: '100%' }}>
+                                <label>Historical Data</label>
+                                <select 
+                                    value={baselineYears} 
+                                    onChange={handleBaselineYearsChange}
+                                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-light)', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                                >
+                                    <option value={1}>1 Year</option>
+                                    <option value={2}>2 Years</option>
+                                    <option value={3}>3 Years</option>
+                                </select>
+                            </div>
+                        </div>
+                    )}
                     <button
                         className="btn action-btn-sm"
                         onClick={onFetchData}
                         disabled={isFetchingData}
-                        style={{ marginTop: '8px', width: '50%', marginLeft: 'auto', marginRight: 'auto', display: 'block' }}
+                        style={{ marginTop: '12px', width: '100%', display: 'block' }}
                     >
                         {isFetchingData ? t('loading') || 'Loading...' : t('fetch_data')}
                     </button>

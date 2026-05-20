@@ -2,7 +2,7 @@ import ee
 
 def get_eto_image(date):
     """
-    Get Reference Evapotranspiration (ETo) safely using the Mosaic Fallback pattern.
+    Get Reference Evapotranspiration (ETo) safely using the Server-Side Conditional Fallback pattern.
     """
     # 1. Process actual data (if it exists)
     eto_col = ee.ImageCollection("MODIS/061/MOD16A2") \
@@ -13,10 +13,12 @@ def get_eto_image(date):
     # 2. Create an UNMASKED default canvas (Guarantees 1 band, value 4.0)
     fallback_eto = ee.Image.constant(4.0).toFloat().rename('ETo')
     
-    # 3. Put fallback FIRST, then merge actual data. 
-    # mosaic() paints the actual data on top of the fallback.
-    # If no actual data exists, you just get the 4.0 canvas!
-    eto_img = ee.ImageCollection([fallback_eto]).merge(eto_col).mosaic()
+    # 3. Use server-side conditional logic: if MODIS has data, use its mosaic, else fallback
+    eto_img = ee.Image(ee.Algorithms.If(
+        eto_col.size().gt(0),
+        eto_col.mosaic().toFloat().rename('ETo'),
+        fallback_eto
+    ))
     
     # Calculate size on the original collection for your logs
     eto_count = eto_col.size()
@@ -25,7 +27,7 @@ def get_eto_image(date):
 
 def get_rainfall_image(date):
     """
-    Get Rainfall from CHIRPS safely using the Mosaic Fallback pattern.
+    Get Rainfall from CHIRPS safely using the Server-Side Conditional Fallback pattern.
     """
     # 1. Get actual data and rename band to 'Rain' so it matches the canvas
     chirps_col = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY") \
@@ -36,8 +38,12 @@ def get_rainfall_image(date):
     # 2. Create an UNMASKED default canvas (Guarantees 1 band, value 0)
     fallback_rain = ee.Image.constant(0.0).toFloat().rename('Rain')
     
-    # 3. Merge and Mosaic (Actual rainfall paints over the 0)
-    rain_img = ee.ImageCollection([fallback_rain]).merge(chirps_col).mosaic()
+    # 3. Use server-side conditional logic: if CHIRPS has data, use its mosaic, else fallback
+    rain_img = ee.Image(ee.Algorithms.If(
+        chirps_col.size().gt(0),
+        chirps_col.mosaic().toFloat().rename('Rain'),
+        fallback_rain
+    ))
     
     # Calculate effective rainfall
     eff_rain = rain_img.multiply(0.8).toFloat().rename('EffRain')

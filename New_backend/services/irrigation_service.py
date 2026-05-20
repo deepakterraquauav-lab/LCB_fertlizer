@@ -31,6 +31,10 @@ def get_combined_data(aoi, start_date, end_date, mask_agri=False):
 
     logger.info(f"Found {len(dates_list)} unique dates total.")
 
+    if not dates_list:
+        logger.info("No unique dates found for imagery. Returning empty FeatureCollection.")
+        return ee.FeatureCollection([])
+
     # 3. Calculate Global NDVI Thresholds (from Landsat preferably, or S2 fallback)
     logger.info("Calculating seasonal NDVI thresholds...")
     landsat_count = landsat_col.size().getInfo()

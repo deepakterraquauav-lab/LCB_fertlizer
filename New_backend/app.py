@@ -546,7 +546,7 @@ def get_daily_data():
                 
                 while current_start < final_end:
                     current_end = current_start + timedelta(days=365)
-                    if current_end > final_end:
+                    if current_end > final_end or (final_end - current_end).days < 30:
                         current_end = final_end
                     chunks.append((current_start.strftime("%Y-%m-%d"), current_end.strftime("%Y-%m-%d")))
                     current_start = current_end

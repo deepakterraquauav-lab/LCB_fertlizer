@@ -140,8 +140,15 @@ def get_ndvi_range(collection, aoi):
         bestEffort=True
     )
     
-    ndvi_min = ee.Number(ndvi_stats.get('NDVI_p20')).clamp(0.05, 0.2)
-    ndvi_max = ee.Number(ndvi_stats.get('NDVI_p90')).clamp(0.4, 0.9)
+    p20_raw = ndvi_stats.get('NDVI_p20')
+    p90_raw = ndvi_stats.get('NDVI_p90')
+    
+    # Safely handle null values (e.g. if chunk has no uncloudy images)
+    ndvi_p20_safe = ee.Number(ee.Algorithms.If(ee.Algorithms.IsEqual(p20_raw, None), 0.1, p20_raw))
+    ndvi_p90_safe = ee.Number(ee.Algorithms.If(ee.Algorithms.IsEqual(p90_raw, None), 0.8, p90_raw))
+    
+    ndvi_min = ndvi_p20_safe.clamp(0.05, 0.2)
+    ndvi_max = ndvi_p90_safe.clamp(0.4, 0.9)
     
     return ndvi_min, ndvi_max
 

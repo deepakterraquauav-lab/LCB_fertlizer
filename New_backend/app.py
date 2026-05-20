@@ -94,6 +94,10 @@ logger.setLevel(logging.DEBUG)
 _db_url = os.getenv('DATABASE_URL', '')
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url.replace("postgres://", "postgresql://")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+}
 db = SQLAlchemy(app)
 
 # =============================================================================
@@ -109,6 +113,15 @@ class Field(db.Model):
     area_hectares = db.Column(db.Float, nullable=True)
     area_acres = db.Column(db.Float, nullable=True)
     field_type = db.Column(db.String(50), nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    village = db.Column(db.String(128), nullable=True)
+    district = db.Column(db.String(128), nullable=True)
+    state = db.Column(db.String(128), nullable=True)
+    crop_type = db.Column(db.String(128), nullable=True)
+    crop_name = db.Column(db.String(128), nullable=True)
+    sowing_date = db.Column(db.String(32), nullable=True)
+    harvesting_date = db.Column(db.String(32), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class AnalysisLog(db.Model):
@@ -119,6 +132,12 @@ class AnalysisLog(db.Model):
     analysis_type = db.Column(db.String(50))
     data = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Expenditure(db.Model):
+    __tablename__ = 'user_expenditures'
+    id = db.Column(db.Integer, primary_key=True)
+    field_id = db.Column(db.Integer, db.ForeignKey('user_fields.id'), nullable=False)
+
 
 class UserStats(db.Model):
     __tablename__ = 'user_stats'
@@ -134,6 +153,18 @@ try:
     with app.app_context():
         db.create_all()
         print("Database tables created/verified")
+        # Run startup alteration queries to ensure dynamic schema upgrade
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS latitude FLOAT;"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS longitude FLOAT;"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS village VARCHAR(128);"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS district VARCHAR(128);"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS state VARCHAR(128);"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS crop_type VARCHAR(128);"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS crop_name VARCHAR(128);"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS sowing_date VARCHAR(32);"))
+        db.session.execute(db.text("ALTER TABLE user_fields ADD COLUMN IF NOT EXISTS harvesting_date VARCHAR(32);"))
+        db.session.commit()
+        print("Database schema successfully upgraded with coordinates, crop/location, and sowing/harvesting columns.")
 except Exception as _db_init_err:
     print(f"DB init warning (safe to ignore if tables already exist): {_db_init_err}")
 
@@ -253,6 +284,32 @@ def update_field(field_id):
             field.area_acres = data['area_acres']
         if 'field_type' in data:
             field.field_type = data['field_type']
+        if 'latitude' in data:
+            field.latitude = data['latitude']
+        if 'longitude' in data:
+            field.longitude = data['longitude']
+        if 'village' in data:
+            field.village = data['village']
+        if 'district' in data:
+            field.district = data['district']
+        if 'state' in data:
+            field.state = data['state']
+        if 'cropType' in data:
+            field.crop_type = data['cropType']
+        if 'crop_type' in data:
+            field.crop_type = data['crop_type']
+        if 'cropName' in data:
+            field.crop_name = data['cropName']
+        if 'crop_name' in data:
+            field.crop_name = data['crop_name']
+        if 'sowingDate' in data:
+            field.sowing_date = data['sowingDate']
+        if 'sowing_date' in data:
+            field.sowing_date = data['sowing_date']
+        if 'harvestingDate' in data:
+            field.harvesting_date = data['harvestingDate']
+        if 'harvesting_date' in data:
+            field.harvesting_date = data['harvesting_date']
             
         db.session.commit()
         
@@ -325,7 +382,16 @@ def save_field():
             geometry=data.get('geometry'), 
             area_hectares=area_hectares,
             area_acres=area_acres,
-            field_type=data.get('type')
+            field_type=data.get('type'),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            village=data.get('village'),
+            district=data.get('district'),
+            state=data.get('state'),
+            crop_type=data.get('cropType') or data.get('crop_type'),
+            crop_name=data.get('cropName') or data.get('crop_name'),
+            sowing_date=data.get('sowingDate') or data.get('sowing_date'),
+            harvesting_date=data.get('harvestingDate') or data.get('harvesting_date')
         )
         db.session.add(new_field)
         db.session.commit()
@@ -363,6 +429,15 @@ def get_fields():
                 'areaHectares': round(float(ha), 2) if ha is not None else None,
                 'areaAcres': acres,
                 'type': f.field_type,
+                'latitude': f.latitude,
+                'longitude': f.longitude,
+                'village': f.village,
+                'district': f.district,
+                'state': f.state,
+                'cropType': f.crop_type,
+                'cropName': f.crop_name,
+                'sowingDate': f.sowing_date,
+                'harvestingDate': f.harvesting_date,
                 'created_at': f.created_at.isoformat()
             })
         return jsonify(fields_list)
@@ -378,6 +453,10 @@ def delete_field(field_id):
         field = Field.query.filter_by(id=field_id, user_id=user_id).first()
         if not field:
             return jsonify({'error': 'Field not found'}), 404
+        # Cascading pre-delete purge on dependent tables
+        db.session.query(AnalysisLog).filter_by(field_id=field_id).delete()
+        db.session.query(Expenditure).filter_by(field_id=field_id).delete()
+
         db.session.delete(field)
         db.session.commit()
         
@@ -443,18 +522,43 @@ def get_daily_data():
         end = ee.Date(end_date)
         diff_days = end.difference(start, 'day').getInfo()
         
-        if diff_days > 365:
-            return jsonify({'error': 'Date range too large. Please select ≤ 12 months (≤ 365 days).'}), 400
+        if diff_days > 1096:
+            return jsonify({'error': 'Date range too large. Please select ≤ 3 years.'}), 400
 
         logger.info(f"Requesting data from {start_date} to {end_date}. Masking: {mask_agri}")
         
-        # Call Service
-        daily_collection = irrigation_service.get_combined_data(aoi, start_date, end_date, mask_agri=mask_agri)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from datetime import datetime, timedelta
         
-        # Fetch Info
+        def fetch_chunk(chunk_start, chunk_end):
+            chunk_collection = irrigation_service.get_combined_data(aoi, chunk_start, chunk_end, mask_agri=mask_agri)
+            return chunk_collection.getInfo().get('features', [])
+
+        raw = []
         try:
-            raw = daily_collection.getInfo().get('features', [])
-            logger.debug(f"Fetched {len(raw)} daily records")
+            if diff_days <= 366:
+                raw = fetch_chunk(start_date, end_date)
+                logger.debug(f"Fetched {len(raw)} daily records")
+            else:
+                chunks = []
+                current_start = datetime.strptime(start_date, "%Y-%m-%d")
+                final_end = datetime.strptime(end_date, "%Y-%m-%d")
+                
+                while current_start < final_end:
+                    current_end = current_start + timedelta(days=365)
+                    if current_end > final_end:
+                        current_end = final_end
+                    chunks.append((current_start.strftime("%Y-%m-%d"), current_end.strftime("%Y-%m-%d")))
+                    current_start = current_end
+                
+                logger.info(f"Chunking request into {len(chunks)} chunks: {chunks}")
+                
+                with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+                    futures = [executor.submit(fetch_chunk, c_start, c_end) for c_start, c_end in chunks]
+                    for future in as_completed(futures):
+                        raw.extend(future.result())
+                        
+                logger.debug(f"Fetched {len(raw)} total daily records from chunks")
         except Exception as e:
             logger.error(f"EE getInfo failed: {e}")
             logger.error(traceback.format_exc())

@@ -3441,22 +3441,27 @@ def generate_report_response(payload: dict):
     crop_name   = payload.get("crop_name", "Crop")
     aoi         = payload.get("aoi")
     aoi_coords  = None
-    center_lat  = None
-    center_lon  = None
+    center_lat  = payload.get("centroid_lat")
+    center_lon  = payload.get("centroid_lon")
+    area_ha     = payload.get("area_ha") or 0
     try:
         aoi_coords = aoi["geometry"]["coordinates"]
     except Exception:
         pass
 
-    location_text = payload.get("location")
-    if not location_text and aoi_coords:
+    # Derive centroid from AOI if frontend didn't send it
+    if (center_lat is None or center_lon is None) and aoi_coords:
         try:
             polygon = aoi_coords[0] if isinstance(aoi_coords[0][0], (list, tuple)) else aoi_coords
-            avg_lon = sum(p[0] for p in polygon) / len(polygon)
-            avg_lat = sum(p[1] for p in polygon) / len(polygon)
-            center_lon = avg_lon
-            center_lat = avg_lat
-            location_text = get_location_name(avg_lat, avg_lon) or f"{round(avg_lat,5)}, {round(avg_lon,5)}"
+            center_lon = sum(p[0] for p in polygon) / len(polygon)
+            center_lat = sum(p[1] for p in polygon) / len(polygon)
+        except Exception:
+            pass
+
+    location_text = payload.get("location")
+    if not location_text and center_lat is not None and center_lon is not None:
+        try:
+            location_text = get_location_name(center_lat, center_lon) or f"{round(center_lat,5)}, {round(center_lon,5)}"
         except Exception:
             location_text = None
 
@@ -3579,8 +3584,59 @@ def generate_report_response(payload: dict):
         ('LINEBELOW', (0,0), (-1,0), 1.2, colors.HexColor("#2E7D32")), ('BOTTOMPADDING', (0,0), (-1,0), 6),
     ]))
     story.append(hdr_table)
-    # Slightly reduce gap under header to reclaim vertical space
-    story.append(Spacer(1, 2 if is_hi else 4))
+    story.append(Spacer(1, 2 if is_hi else 3))
+
+    # ── Area & Location info bar ──────────────────────────────────────
+    info_style = ParagraphStyle(
+        "InfoCell",
+        fontName=pdf_font_name,
+        fontSize=8.5,
+        leading=12,
+        alignment=1,
+        textColor=colors.HexColor("#1B5E20"),
+    )
+    info_label_style = ParagraphStyle(
+        "InfoLabel",
+        fontName=pdf_font_bold,
+        fontSize=7,
+        leading=10,
+        alignment=1,
+        textColor=colors.HexColor("#4CAF50"),
+    )
+
+    loc_display   = location_text or u"\u2014"
+    area_display  = f"{area_ha:.4f} ha" if area_ha else u"\u2014"
+    if center_lat is not None and center_lon is not None:
+        latdir = "N" if center_lat >= 0 else "S"
+        londir = "E" if center_lon >= 0 else "W"
+        coord_display = f"{abs(center_lat):.5f}\u00b0{latdir},  {abs(center_lon):.5f}\u00b0{londir}"
+    else:
+        coord_display = u"\u2014"
+
+    info_data = [[
+        Paragraph("LOCATION",   info_label_style),
+        Paragraph("AREA",       info_label_style),
+        Paragraph("COORDINATES", info_label_style),
+    ], [
+        Paragraph(loc_display,   info_style),
+        Paragraph(area_display,  info_style),
+        Paragraph(coord_display, info_style),
+    ]]
+
+    info_table = Table(info_data, colWidths=[W * 0.45, W * 0.2, W * 0.35])
+    info_table.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, -1), colors.HexColor("#F1F8E9")),
+        ("BOX",           (0, 0), (-1, -1), 0.8, colors.HexColor("#4CAF50")),
+        ("INNERGRID",     (0, 0), (-1, -1), 0.5, colors.HexColor("#A5D6A7")),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING",    (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 2 if is_hi else 5))
+    # ─────────────────────────────────────────────────────────────────
 
     sum_title = lang_strings.get("field_intel_title", "Field Intelligence Analysis")
     story.append(Paragraph(sum_title, ParagraphStyle("SumTitle", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=3 if is_hi else 6, wordSelectMethod='shaping' if is_hi else 'default')))

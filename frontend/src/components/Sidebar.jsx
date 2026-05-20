@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { t } from '../utils/translations';
+import Swal from 'sweetalert2';
 import './MapControls.css';
 
 import img_rgb from '../assets/img_rgb.png';
@@ -34,17 +35,18 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
         isFetchingData,
         isFetchingLayer,
         isGeneratingCalendar,
-        isGeneratingReport
+        isGeneratingReport,
+        dateMode,
+        setDateMode,
+        baselineDate,
+        setBaselineDate,
+        baselineYears,
+        setBaselineYears
     } = useApp();
 
     const [uploadedLayers, setUploadedLayers] = useState([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef(null);
-
-    // Date Mode State
-    const [dateMode, setDateMode] = useState('custom'); // 'custom' or 'baseline'
-    const [baselineDate, setBaselineDate] = useState(new Date().toISOString().split('T')[0]);
-    const [baselineYears, setBaselineYears] = useState(1);
 
     const handleBaselineDateChange = (e) => {
         const selectedDate = e.target.value;
@@ -178,6 +180,26 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
             setActiveChartParam(chartParam);
         }
 
+        // If baseline mode, block layer loading on the map and show premium info alert
+        if (dateMode === 'baseline') {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+            Toast.fire({
+                icon: 'info',
+                title: `Charts updated. Map layers are disabled in Baseline Mode.`
+            });
+            return;
+        }
+
         // Auto-load layer when selected from dropdown (if AOI is drawn) - matches app2.html line 5089
         if (value && onLayerChange) {
             onLayerChange(value);
@@ -186,6 +208,15 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
 
     // Handle Add Layer button click
     const handleAddLayer = () => {
+        if (dateMode === 'baseline') {
+            Swal.fire({
+                icon: 'info',
+                title: 'Baseline Mode',
+                text: 'Map layers cannot be added in Baseline Mode.',
+                confirmButtonColor: 'var(--krishi-green)'
+            });
+            return;
+        }
         if (selectedLayer && onLayerChange) {
             onLayerChange(selectedLayer);
         }

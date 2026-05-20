@@ -69,7 +69,16 @@ const paramColors = {
 };
 
 function ChartPanel({ mode = 'overlay' }) {
-    const { chartData, activeChartParam, setActiveChartParam, isDarkMode, availableImageryDates } = useApp();
+    const { 
+        chartData, 
+        activeChartParam, 
+        setActiveChartParam, 
+        isDarkMode, 
+        availableImageryDates,
+        dateMode,
+        baselineDate,
+        baselineYears 
+    } = useApp();
     const [selectedWeatherParam, setSelectedWeatherParam] = useState('eto');
     const [isCollapsed, setIsCollapsed] = useState(true); // Default collapsed
     const [isExpanded, setIsExpanded] = useState(false); // Modal state
@@ -89,15 +98,15 @@ function ChartPanel({ mode = 'overlay' }) {
         ? t(activeParamObj.label)
         : (t('data_analytics') || 'Trend Analysis');
 
-    const getChartConfig = () => {
-        if (!chartData || chartData.length === 0) {
+    const getChartConfigForData = (dataSubset, labelSuffix = '') => {
+        if (!dataSubset || dataSubset.length === 0) {
             return null;
         }
 
         const imageryDateSet = new Set(availableImageryDates || []);
         const sourceData = imageryDateSet.size > 0
-            ? chartData.filter(d => d?.date && imageryDateSet.has(d.date))
-            : chartData;
+            ? dataSubset.filter(d => d?.date && imageryDateSet.has(d.date))
+            : dataSubset;
 
         let dataKey = activeChartParam;
         const getPointValue = (d) => {
@@ -174,14 +183,14 @@ function ChartPanel({ mode = 'overlay' }) {
                 // but preserve (ETc) if it's not the very last thing or if we want to be safe
                 // The regex \s*\([^)]*\)$ matches a space (optional) followed by (...) at end of string
                 const cleanLabel = rawLabel.replace(/\s*\([^)]*\)$/, '');
-                chartLabel = `${cleanLabel} (${weatherConfig.unit})`;
+                chartLabel = `${cleanLabel} (${weatherConfig.unit})${labelSuffix}`;
             } else {
-                chartLabel = t('opt_w');
+                chartLabel = `${t('opt_w')}${labelSuffix}`;
             }
         } else {
             const paramConfig = chartParams.find(p => p.key === activeChartParam);
             const paramLabel = t(paramConfig?.label || activeChartParam);
-            chartLabel = activeChartParam === 'lst' ? `${paramLabel} (°C)` : paramLabel;
+            chartLabel = `${activeChartParam === 'lst' ? `${paramLabel} (°C)` : paramLabel}${labelSuffix}`;
         }
 
         // Extract RGB from border color for transparency
@@ -239,7 +248,42 @@ function ChartPanel({ mode = 'overlay' }) {
         };
     };
 
-    const chartConfig = getChartConfig();
+    // Split logic in Baseline Mode
+    const getSplitData = () => {
+        if (!chartData || chartData.length === 0) return { baseline: null, historical: null };
+        if (dateMode !== 'baseline' || baselineYears <= 1) return { baseline: chartData, historical: null };
+
+        // Split date strings safely to avoid timezone shift
+        const parts = baselineDate.split('-');
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        const day = parseInt(parts[2]);
+        
+        const baseStart = new Date(year - 1, month, day);
+        const pad = (n) => String(n).padStart(2, '0');
+        const baseStartStr = `${baseStart.getFullYear()}-${pad(baseStart.getMonth() + 1)}-${pad(baseStart.getDate())}`;
+
+        const baseline = chartData.filter(d => d.date >= baseStartStr);
+        const historical = chartData.filter(d => d.date < baseStartStr);
+
+        return { baseline, historical };
+    };
+
+    const isBaselineSplit = dateMode === 'baseline' && baselineYears > 1 && chartData && chartData.length > 0;
+    const { baseline: baselineDataSubset, historical: historicalDataSubset } = getSplitData();
+
+    const chartConfig = !isBaselineSplit ? getChartConfigForData(chartData) : null;
+    const baselineConfig = isBaselineSplit ? getChartConfigForData(baselineDataSubset) : null;
+    const historicalConfig = isBaselineSplit ? getChartConfigForData(historicalDataSubset) : null;
+
+    // Dates range helper
+    const getDatesRange = (subset) => {
+        if (!subset || subset.length === 0) return '';
+        const dates = subset.map(d => d.date).filter(Boolean).sort();
+        if (dates.length === 0) return '';
+        return `(${dates[0]} to ${dates[dates.length - 1]})`;
+    };
+
 
     const options = {
         responsive: true,
@@ -370,6 +414,48 @@ function ChartPanel({ mode = 'overlay' }) {
 
 
 
+    const renderStatsForConfig = (config) => {
+        if (!config || activeChartParam === 'weather') return null;
+
+        const meanDataset = config.datasets.find(d => d.label.includes('Mean') || (d.label && !d.label.includes('Range')));
+        if (!meanDataset) return null;
+
+        const validValues = meanDataset.data.filter(v => v !== null && v !== undefined);
+        if (validValues.length === 0) return null;
+
+        const min = Math.min(...validValues);
+        const max = Math.max(...validValues);
+        const mean = validValues.reduce((a, b) => a + b, 0) / validValues.length;
+
+        return (
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '20px',
+                padding: '12px',
+                marginTop: '8px',
+                background: 'var(--card-bg)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                fontSize: '13px',
+                fontWeight: '500'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Min:</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: '600' }}>{min.toFixed(3)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Mean:</span>
+                    <span style={{ color: '#10b981', fontWeight: '600' }}>{mean.toFixed(3)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Max:</span>
+                    <span style={{ color: '#f59e0b', fontWeight: '600' }}>{max.toFixed(3)}</span>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <>
             <div className={`chart-area ${isCollapsed ? 'collapsed' : ''} ${mode === 'sidebar' ? 'sidebar-mode' : ''}`}>
@@ -436,10 +522,50 @@ function ChartPanel({ mode = 'overlay' }) {
                     </div>
                 )}
 
-                <div className="chart-wrap">
+                <div className="chart-wrap" style={{ overflowY: isBaselineSplit ? 'auto' : 'hidden' }}>
                     {!chartData ? (
                         <div className="chart-placeholder">
                             <p>{t('opt_Draw')}</p>
+                        </div>
+                    ) : isBaselineSplit ? (
+                        <div style={{ padding: '8px 0' }}>
+                            {/* Baseline Year Chart */}
+                            <div style={{ padding: '0 12px' }}>
+                                <h5 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    Baseline Year {getDatesRange(baselineDataSubset)}
+                                </h5>
+                            </div>
+                            <div style={{ width: '100%', height: '180px', padding: '0 12px 12px 12px' }}>
+                                {baselineConfig && (
+                                    <Line
+                                        data={baselineConfig}
+                                        options={options}
+                                    />
+                                )}
+                            </div>
+                            <div style={{ padding: '0 12px 12px 12px' }}>
+                                {renderStatsForConfig(baselineConfig)}
+                            </div>
+
+                            <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '16px 0' }} />
+
+                            {/* Historical Reference Chart */}
+                            <div style={{ padding: '0 12px' }}>
+                                <h5 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    Historical Reference {getDatesRange(historicalDataSubset)}
+                                </h5>
+                            </div>
+                            <div style={{ width: '100%', height: '180px', padding: '0 12px 12px 12px' }}>
+                                {historicalConfig && (
+                                    <Line
+                                        data={historicalConfig}
+                                        options={options}
+                                    />
+                                )}
+                            </div>
+                            <div style={{ padding: '0 12px 12px 12px' }}>
+                                {renderStatsForConfig(historicalConfig)}
+                            </div>
                         </div>
                     ) : (
                         <>
@@ -453,45 +579,7 @@ function ChartPanel({ mode = 'overlay' }) {
                                 )}
                             </div>
                             {/* Statistics Display - Hidden for weather tab */}
-                            {chartConfig && activeChartParam !== 'weather' && (() => {
-                                const meanDataset = chartConfig.datasets.find(d => d.label.includes('Mean') || (d.label && !d.label.includes('Range')));
-                                if (!meanDataset) return null;
-
-                                const validValues = meanDataset.data.filter(v => v !== null && v !== undefined);
-                                if (validValues.length === 0) return null;
-
-                                const min = Math.min(...validValues);
-                                const max = Math.max(...validValues);
-                                const mean = validValues.reduce((a, b) => a + b, 0) / validValues.length;
-
-                                return (
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        gap: '20px',
-                                        padding: '12px',
-                                        marginTop: '8px',
-                                        background: 'var(--card-bg)',
-                                        borderRadius: '8px',
-                                        border: '1px solid var(--border-color)',
-                                        fontSize: '13px',
-                                        fontWeight: '500'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Min:</span>
-                                            <span style={{ color: '#0ea5e9', fontWeight: '600' }}>{min.toFixed(3)}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Mean:</span>
-                                            <span style={{ color: '#10b981', fontWeight: '600' }}>{mean.toFixed(3)}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ color: 'var(--text-secondary)' }}>Max:</span>
-                                            <span style={{ color: '#f59e0b', fontWeight: '600' }}>{max.toFixed(3)}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
+                            {chartConfig && activeChartParam !== 'weather' && renderStatsForConfig(chartConfig)}
                         </>
                     )}
                 </div>
@@ -548,8 +636,47 @@ function ChartPanel({ mode = 'overlay' }) {
                                 <i className="fa-solid fa-xmark"></i>
                             </button>
                         </div>
-                        <div style={{ flex: 1, position: 'relative' }}>
-                            {chartConfig && <Line data={chartConfig} options={{ ...options, maintainAspectRatio: false }} />}
+                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
+                            {isBaselineSplit ? (
+                                <>
+                                    {/* Baseline Year Chart */}
+                                    <div style={{ marginBottom: '32px' }}>
+                                        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: isDarkMode ? '#e0e0e0' : '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Baseline Year {getDatesRange(baselineDataSubset)}
+                                        </h3>
+                                        <div style={{ height: '32vh', position: 'relative' }}>
+                                            {baselineConfig && <Line data={baselineConfig} options={{ ...options, maintainAspectRatio: false }} />}
+                                        </div>
+                                        <div style={{ marginTop: '12px' }}>
+                                            {renderStatsForConfig(baselineConfig)}
+                                        </div>
+                                    </div>
+
+                                    <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '24px 0' }} />
+
+                                    {/* Historical Reference Chart */}
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: isDarkMode ? '#e0e0e0' : '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Historical Reference {getDatesRange(historicalDataSubset)}
+                                        </h3>
+                                        <div style={{ height: '32vh', position: 'relative' }}>
+                                            {historicalConfig && <Line data={historicalConfig} options={{ ...options, maintainAspectRatio: false }} />}
+                                        </div>
+                                        <div style={{ marginTop: '12px' }}>
+                                            {renderStatsForConfig(historicalConfig)}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div style={{ height: '70vh', position: 'relative' }}>
+                                        {chartConfig && <Line data={chartConfig} options={{ ...options, maintainAspectRatio: false }} />}
+                                    </div>
+                                    <div style={{ marginTop: '12px' }}>
+                                        {chartConfig && activeChartParam !== 'weather' && renderStatsForConfig(chartConfig)}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>,
@@ -557,6 +684,7 @@ function ChartPanel({ mode = 'overlay' }) {
             )}
         </>
     );
+
 }
 
 export default ChartPanel;

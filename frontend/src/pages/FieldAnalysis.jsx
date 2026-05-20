@@ -121,6 +121,7 @@ function AppContent() {
     selectedLayer,
     setSelectedLayer,
     opacity,
+    setOpacity,
     setChartData,
     chartData,
     setNdviStats,
@@ -134,7 +135,8 @@ function AppContent() {
     setLoadingState,
     notify,
     removeNotification,
-    setAvailableImageryDates
+    setAvailableImageryDates,
+    dateMode
   } = useApp();
 
   const [searchParams] = useSearchParams();
@@ -222,6 +224,20 @@ function AppContent() {
     }
     loadField();
   }, [fieldId, drawnAOI, setDrawnAOI, notify]);
+
+  // Clear map layers and reset layer state when switching to Baseline Mode
+  useEffect(() => {
+    if (dateMode === 'baseline') {
+      setSelectedLayer('');
+      setCurrentLayerType(null);
+      setDateCarouselKey(0);
+      setAvailableImageryDates([]);
+      if (window.mapFunctions) {
+        window.mapFunctions.clearAllLayers();
+      }
+      console.log('🔄 Switched to Baseline Mode: cleared map layers and reset states.');
+    }
+  }, [dateMode, setSelectedLayer, setAvailableImageryDates]);
 
   // Handle location select from header search
   const handleLocationSelectSetup = useCallback((centerFunction) => {
@@ -997,7 +1013,7 @@ function AppContent() {
             />
 
             {/* Date Carousel */}
-            {currentLayerType && drawnAOI && dateCarouselKey > 0 && (
+            {currentLayerType && drawnAOI && dateCarouselKey > 0 && dateMode !== 'baseline' && (
               <DateCarousel
                 autoSelect={false}
                 refreshToken={dateCarouselKey}

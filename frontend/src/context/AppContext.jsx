@@ -23,6 +23,11 @@ export function AppProvider({ children }) {
     const [selectedLayer, setSelectedLayer] = useState('');
     const [opacity, setOpacity] = useState(100);
 
+    // Baseline Mode States
+    const [dateMode, setDateMode] = useState('custom'); // 'custom' or 'baseline'
+    const [baselineDate, setBaselineDate] = useState(new Date().toISOString().split('T')[0]);
+    const [baselineYears, setBaselineYears] = useState(1);
+
     // Watch selectedLayer and toggle right panel
     useEffect(() => {
         if (selectedLayer) {
@@ -156,6 +161,12 @@ export function AppProvider({ children }) {
         setStartDate,
         endDate,
         setEndDate,
+        dateMode,
+        setDateMode,
+        baselineDate,
+        setBaselineDate,
+        baselineYears,
+        setBaselineYears,
 
         // Layer selection
         selectedLayer,

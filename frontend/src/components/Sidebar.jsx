@@ -42,7 +42,8 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
         setBaselineDate,
         baselineYears,
         setBaselineYears,
-        isDarkMode
+        isDarkMode,
+        setShowBaselineWarning
     } = useApp();
 
     const [uploadedLayers, setUploadedLayers] = useState([]);
@@ -170,6 +171,11 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
         return layerToChartMap[layerId] || null;
     };
 
+    // Helper to show baseline notification bar for exactly 5 seconds
+    const showBaselineAlert = () => {
+        setShowBaselineWarning(true);
+    };
+
     // Handle layer selection change - AUTO-LOAD like app2.html
     const handleLayerSelectChange = (e) => {
         const value = e.target.value;
@@ -183,21 +189,7 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
 
         // If baseline mode, block layer loading on the map and show premium info alert
         if (dateMode === 'baseline') {
-            Swal.fire({
-                icon: 'info',
-                title: 'Baseline Mode Active',
-                html: `<div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500; margin-top: 10px;">Charts updated.<br/><span style="color: var(--krishi-green); font-weight: 600;">Map layers are disabled</span> in Baseline Mode.</div>`,
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                position: 'center',
-                background: isDarkMode ? '#1e1e24' : '#ffffff',
-                color: isDarkMode ? '#f8fafc' : '#0f172a',
-                backdrop: false, // Make it non-blocking over the map so user can still see the map
-                customClass: {
-                    popup: 'premium-map-alert',
-                }
-            });
+            showBaselineAlert();
             return;
         }
 
@@ -210,12 +202,7 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
     // Handle Add Layer button click
     const handleAddLayer = () => {
         if (dateMode === 'baseline') {
-            Swal.fire({
-                icon: 'info',
-                title: 'Baseline Mode',
-                text: 'Map layers cannot be added in Baseline Mode.',
-                confirmButtonColor: 'var(--krishi-green)'
-            });
+            showBaselineAlert();
             return;
         }
         if (selectedLayer && onLayerChange) {
@@ -337,7 +324,10 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
                             style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid var(--krishi-green)', background: dateMode === 'custom' ? 'var(--krishi-green)' : 'transparent', color: dateMode === 'custom' ? '#fff' : 'var(--text-main)', borderRadius: '4px', cursor: 'pointer' }}
                         >Custom Range</button>
                         <button 
-                            onClick={() => setDateMode('baseline')}
+                            onClick={() => {
+                                setDateMode('baseline');
+                                showBaselineAlert();
+                            }}
                             style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid var(--krishi-green)', background: dateMode === 'baseline' ? 'var(--krishi-green)' : 'transparent', color: dateMode === 'baseline' ? '#fff' : 'var(--text-main)', borderRadius: '4px', cursor: 'pointer' }}
                         >Baseline Mode</button>
                     </div>

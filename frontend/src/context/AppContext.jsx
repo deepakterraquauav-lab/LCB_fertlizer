@@ -65,6 +65,8 @@ export function AppProvider({ children }) {
         setLoadingStates(prev => ({ ...prev, [key]: value }));
     }, []);
 
+    const [showBaselineWarning, setShowBaselineWarning] = useState(false);
+
     // Non-blocking notification helper
     const notify = useCallback((message, type = 'info', duration = 3000) => {
         const id = Date.now() + Math.random();
@@ -220,6 +222,10 @@ export function AppProvider({ children }) {
 
         // Actions
         clearAllData,
+
+        // Baseline warning pure React modal state
+        showBaselineWarning,
+        setShowBaselineWarning,
     };
 
     return (

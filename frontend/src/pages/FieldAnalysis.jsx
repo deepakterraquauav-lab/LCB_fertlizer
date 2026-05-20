@@ -136,7 +136,9 @@ function AppContent() {
     notify,
     removeNotification,
     setAvailableImageryDates,
-    dateMode
+    dateMode,
+    showBaselineWarning,
+    setShowBaselineWarning
   } = useApp();
 
   const [searchParams] = useSearchParams();
@@ -238,6 +240,16 @@ function AppContent() {
       console.log('🔄 Switched to Baseline Mode: cleared map layers and reset states.');
     }
   }, [dateMode, setSelectedLayer, setAvailableImageryDates]);
+
+  // Handle auto-dismiss for baseline mode warning (exactly 5 seconds)
+  useEffect(() => {
+    if (showBaselineWarning) {
+      const timer = setTimeout(() => {
+        setShowBaselineWarning(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showBaselineWarning, setShowBaselineWarning]);
 
   // Handle location select from header search
   const handleLocationSelectSetup = useCallback((centerFunction) => {
@@ -1011,6 +1023,32 @@ function AppContent() {
               onLocationSelect={handleLocationSelectSetup}
               fieldId={fieldId}
             />
+
+            {/* Sleek Custom React Baseline Alert Overlay */}
+            {showBaselineWarning && (
+              <div className="react-baseline-alert-overlay">
+                <div className="react-baseline-alert-card">
+                  <button 
+                    className="close-btn" 
+                    onClick={() => setShowBaselineWarning(false)}
+                    aria-label="Close warning"
+                  >
+                    &times;
+                  </button>
+                  <div className="info-icon">
+                    <i className="fas fa-info"></i>
+                  </div>
+                  <h3 className="alert-title">Baseline Mode Active</h3>
+                  <div className="alert-body">
+                    Charts updated.<br />
+                    <span style={{ color: 'var(--krishi-green)', fontWeight: 600 }}>Map layers are disabled</span> in Baseline Mode.
+                  </div>
+                  <div className="progress-bar-container">
+                    <div className="progress-bar-fill"></div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Date Carousel */}
             {currentLayerType && drawnAOI && dateCarouselKey > 0 && dateMode !== 'baseline' && (

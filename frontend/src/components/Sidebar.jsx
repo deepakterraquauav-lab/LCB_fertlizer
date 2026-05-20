@@ -41,7 +41,8 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
         baselineDate,
         setBaselineDate,
         baselineYears,
-        setBaselineYears
+        setBaselineYears,
+        isDarkMode
     } = useApp();
 
     const [uploadedLayers, setUploadedLayers] = useState([]);
@@ -182,20 +183,20 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
 
         // If baseline mode, block layer loading on the map and show premium info alert
         if (dateMode === 'baseline') {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
+            Swal.fire({
+                icon: 'info',
+                title: 'Baseline Mode Active',
+                html: `<div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 500; margin-top: 10px;">Charts updated.<br/><span style="color: var(--krishi-green); font-weight: 600;">Map layers are disabled</span> in Baseline Mode.</div>`,
                 showConfirmButton: false,
                 timer: 3000,
                 timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer);
-                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                position: 'center',
+                background: isDarkMode ? '#1e1e24' : '#ffffff',
+                color: isDarkMode ? '#f8fafc' : '#0f172a',
+                backdrop: false, // Make it non-blocking over the map so user can still see the map
+                customClass: {
+                    popup: 'premium-map-alert',
                 }
-            });
-            Toast.fire({
-                icon: 'info',
-                title: `Charts updated. Map layers are disabled in Baseline Mode.`
             });
             return;
         }

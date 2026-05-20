@@ -62,7 +62,8 @@ function AnalyticsSidebar() {
         selectedLayer,
         activeChartParam,
         setActiveChartParam,
-        setIsRightPanelOpen
+        setIsRightPanelOpen,
+        dateMode
     } = useApp();
 
     const [activeTab, setActiveTab] = useState('overview');
@@ -615,6 +616,18 @@ function AnalyticsSidebar() {
     };
 
     // MAIN RENDER LOGIC
+
+    // Case -1: Baseline Mode - Hide gauge, maximize timeseries
+    if (dateMode === 'baseline') {
+        return (
+            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+                {renderToggleButton()}
+                <div style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'hidden' }}>
+                    <ChartPanel mode="sidebar" />
+                </div>
+            </aside>
+        );
+    }
 
     // Case 0: Weather Tab - Show Weather Dashboard
     if (activeChartParam === 'weather') {

@@ -21,11 +21,6 @@ venv/
 New_backend/.env
 
 # Credentials & Secrets
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!jsconfig.json
 karshizest-a7b3c3acdeee.json
 
 # Build directories

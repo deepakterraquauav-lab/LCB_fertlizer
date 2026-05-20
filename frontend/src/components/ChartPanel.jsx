@@ -248,33 +248,57 @@ function ChartPanel({ mode = 'overlay' }) {
         };
     };
 
-    // Split logic in Baseline Mode
-    const getSplitData = () => {
-        if (!chartData || chartData.length === 0) return { baseline: null, historical: null };
-        if (dateMode !== 'baseline' || baselineYears <= 1) return { baseline: chartData, historical: null };
+    // Dynamic Split logic by individual calendar years in Baseline Mode
+    const getSplitYearsData = () => {
+        if (!chartData || chartData.length === 0 || dateMode !== 'baseline') {
+            return [];
+        }
 
-        // Split date strings safely to avoid timezone shift
         const parts = baselineDate.split('-');
         const year = parseInt(parts[0]);
         const month = parseInt(parts[1]) - 1;
         const day = parseInt(parts[2]);
         
-        const baseStart = new Date(year - 1, month, day);
         const pad = (n) => String(n).padStart(2, '0');
-        const baseStartStr = `${baseStart.getFullYear()}-${pad(baseStart.getMonth() + 1)}-${pad(baseStart.getDate())}`;
 
-        const baseline = chartData.filter(d => d.date >= baseStartStr);
-        const historical = chartData.filter(d => d.date < baseStartStr);
+        const yearsData = [];
+        // Loop through each baseline year from 0 to baselineYears - 1
+        for (let i = 0; i < baselineYears; i++) {
+            const startYear = year - (i + 1);
+            const endYear = year - i;
 
-        return { baseline, historical };
+            // Generate start and end date strings
+            const startStr = `${startYear}-${pad(month + 1)}-${pad(day)}`;
+            const endStr = `${endYear}-${pad(month + 1)}-${pad(day)}`;
+
+            const subset = chartData.filter(d => {
+                if (i === baselineYears - 1) {
+                    // Oldest year: inclusive of startStr boundary to capture all initial days
+                    return d.date >= startStr && d.date <= endStr;
+                } else {
+                    // Newer years: exclusive of startStr to prevent daily overlap between charts
+                    return d.date > startStr && d.date <= endStr;
+                }
+            });
+
+            yearsData.push({
+                label: `${startYear} - ${endYear}`,
+                startYear,
+                endYear,
+                startDateStr: startStr,
+                endDateStr: endStr,
+                subset,
+                config: getChartConfigForData(subset)
+            });
+        }
+
+        return yearsData;
     };
 
-    const isBaselineSplit = dateMode === 'baseline' && baselineYears > 1 && chartData && chartData.length > 0;
-    const { baseline: baselineDataSubset, historical: historicalDataSubset } = getSplitData();
+    const isBaselineSplit = dateMode === 'baseline' && chartData && chartData.length > 0;
+    const splitYears = getSplitYearsData();
 
     const chartConfig = !isBaselineSplit ? getChartConfigForData(chartData) : null;
-    const baselineConfig = isBaselineSplit ? getChartConfigForData(baselineDataSubset) : null;
-    const historicalConfig = isBaselineSplit ? getChartConfigForData(historicalDataSubset) : null;
 
     // Dates range helper
     const getDatesRange = (subset) => {
@@ -529,43 +553,27 @@ function ChartPanel({ mode = 'overlay' }) {
                         </div>
                     ) : isBaselineSplit ? (
                         <div style={{ padding: '8px 0' }}>
-                            {/* Baseline Year Chart */}
-                            <div style={{ padding: '0 12px' }}>
-                                <h5 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    Baseline Year {getDatesRange(baselineDataSubset)}
-                                </h5>
-                            </div>
-                            <div style={{ width: '100%', height: '180px', padding: '0 12px 12px 12px' }}>
-                                {baselineConfig && (
-                                    <Line
-                                        data={baselineConfig}
-                                        options={options}
-                                    />
-                                )}
-                            </div>
-                            <div style={{ padding: '0 12px 12px 12px' }}>
-                                {renderStatsForConfig(baselineConfig)}
-                            </div>
-
-                            <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '16px 0' }} />
-
-                            {/* Historical Reference Chart */}
-                            <div style={{ padding: '0 12px' }}>
-                                <h5 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    Historical Reference {getDatesRange(historicalDataSubset)}
-                                </h5>
-                            </div>
-                            <div style={{ width: '100%', height: '180px', padding: '0 12px 12px 12px' }}>
-                                {historicalConfig && (
-                                    <Line
-                                        data={historicalConfig}
-                                        options={options}
-                                    />
-                                )}
-                            </div>
-                            <div style={{ padding: '0 12px 12px 12px' }}>
-                                {renderStatsForConfig(historicalConfig)}
-                            </div>
+                            {splitYears.map((yearItem, index) => (
+                                <div key={index} style={{ marginBottom: '24px' }}>
+                                    {index > 0 && <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '16px 0' }} />}
+                                    <div style={{ padding: '0 12px' }}>
+                                        <h5 style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            {index === 0 ? 'Baseline Year' : 'Historical Reference'} ({yearItem.label}) {getDatesRange(yearItem.subset)}
+                                        </h5>
+                                    </div>
+                                    <div style={{ width: '100%', height: '180px', padding: '0 12px 12px 12px' }}>
+                                        {yearItem.config && (
+                                            <Line
+                                                data={yearItem.config}
+                                                options={options}
+                                            />
+                                        )}
+                                    </div>
+                                    <div style={{ padding: '0 12px 12px 12px' }}>
+                                        {renderStatsForConfig(yearItem.config)}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     ) : (
                         <>
@@ -639,33 +647,20 @@ function ChartPanel({ mode = 'overlay' }) {
                         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
                             {isBaselineSplit ? (
                                 <>
-                                    {/* Baseline Year Chart */}
-                                    <div style={{ marginBottom: '32px' }}>
-                                        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: isDarkMode ? '#e0e0e0' : '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            Baseline Year {getDatesRange(baselineDataSubset)}
-                                        </h3>
-                                        <div style={{ height: '32vh', position: 'relative' }}>
-                                            {baselineConfig && <Line data={baselineConfig} options={{ ...options, maintainAspectRatio: false }} />}
+                                    {splitYears.map((yearItem, index) => (
+                                        <div key={index} style={{ marginBottom: '32px' }}>
+                                            {index > 0 && <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '24px 0' }} />}
+                                            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: isDarkMode ? '#e0e0e0' : '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                {index === 0 ? 'Baseline Year' : 'Historical Reference'} ({yearItem.label}) {getDatesRange(yearItem.subset)}
+                                            </h3>
+                                            <div style={{ height: '32vh', position: 'relative' }}>
+                                                {yearItem.config && <Line data={yearItem.config} options={{ ...options, maintainAspectRatio: false }} />}
+                                            </div>
+                                            <div style={{ marginTop: '12px' }}>
+                                                {renderStatsForConfig(yearItem.config)}
+                                            </div>
                                         </div>
-                                        <div style={{ marginTop: '12px' }}>
-                                            {renderStatsForConfig(baselineConfig)}
-                                        </div>
-                                    </div>
-
-                                    <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '24px 0' }} />
-
-                                    {/* Historical Reference Chart */}
-                                    <div style={{ marginBottom: '16px' }}>
-                                        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: isDarkMode ? '#e0e0e0' : '#333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            Historical Reference {getDatesRange(historicalDataSubset)}
-                                        </h3>
-                                        <div style={{ height: '32vh', position: 'relative' }}>
-                                            {historicalConfig && <Line data={historicalConfig} options={{ ...options, maintainAspectRatio: false }} />}
-                                        </div>
-                                        <div style={{ marginTop: '12px' }}>
-                                            {renderStatsForConfig(historicalConfig)}
-                                        </div>
-                                    </div>
+                                    ))}
                                 </>
                             ) : (
                                 <>

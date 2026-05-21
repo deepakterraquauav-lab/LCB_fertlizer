@@ -3,6 +3,9 @@ SMART IRRIGATION SYSTEM - COMPLETE FLASK BACKEND
 Merged Landsat + Sentinel-2/MODIS Logic
 """
 
+import matplotlib
+matplotlib.use('Agg') # Render/Production server compatibility (Non-interactive mode)
+
 from flask import Flask, render_template, request, jsonify
 import ee
 from datetime import timedelta, datetime

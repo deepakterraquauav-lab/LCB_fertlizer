@@ -577,7 +577,7 @@ function ChartPanel({ mode = 'overlay' }) {
                         size: 9, // Smaller ticks
                     },
                     autoSkip: false,
-                    includeBounds: true,
+                    includeBounds: false,
                     stepSize: isNormalized ? 0.2 : undefined,
                     callback: function(value) {
                         if (isNormalized) {
@@ -590,7 +590,7 @@ function ChartPanel({ mode = 'overlay' }) {
                     }
                 },
                 beginAtZero: activeChartParam !== 'lst',
-                ...(isNormalized ? { min: 0.0, max: 1.0 } : {}),
+                ...(isNormalized ? { min: -0.15, max: 1.15 } : {}),
             },
         },
 
@@ -633,7 +633,7 @@ function ChartPanel({ mode = 'overlay' }) {
                 scalesObj[`y_${index}`] = {
                     type: 'linear',
                     stack: 'yStacked', // Key property to stack vertically
-                    stackWeight: 6,    // Distribute height equally with substantial weight
+                    stackWeight: 1,    // Distribute height equally
                     position: 'left',
                     grid: {
                         color: isDarkMode ? 'rgba(58, 61, 64, 0.3)' : 'rgba(226, 232, 240, 0.3)',
@@ -647,7 +647,7 @@ function ChartPanel({ mode = 'overlay' }) {
                             size: 9,
                         },
                         autoSkip: false,
-                        includeBounds: true,
+                        includeBounds: false,
                         stepSize: isNormalized ? 0.2 : undefined,
                         callback: function(value) {
                             if (isNormalized) {
@@ -670,33 +670,8 @@ function ChartPanel({ mode = 'overlay' }) {
                         }
                     },
                     beginAtZero: activeChartParam !== 'lst',
-                    ...(isNormalized ? { min: 0.0, max: 1.0 } : {}),
+                    ...(isNormalized ? { min: -0.15, max: 1.15 } : {}),
                 };
-
-                // Add an invisible spacer scale between stacked subplots to avoid tick label collision and create a visual gap
-                if (index < splitYears.length - 1) {
-                    scalesObj[`y_spacer_${index}`] = {
-                        type: 'linear',
-                        stack: 'yStacked',
-                        stackWeight: 1.2,
-                        position: 'left',
-                        display: true,
-                        grid: {
-                            display: false,
-                            drawTicks: false,
-                            drawOnChartArea: false,
-                        },
-                        border: {
-                            display: false,
-                        },
-                        ticks: {
-                            display: false,
-                        },
-                        title: {
-                            display: false,
-                        }
-                    };
-                }
             });
         } else {
             scalesObj.y = options.scales.y;
@@ -707,11 +682,6 @@ function ChartPanel({ mode = 'overlay' }) {
 
     const combinedOptions = {
         ...options,
-        interaction: {
-            intersect: false,
-            mode: 'nearest',
-            axis: 'xy', // Use 'xy' axis to consider vertical distance, ensuring mouse hovering triggers correctly on stacked subplots
-        },
         plugins: {
             ...options.plugins,
             legend: {
@@ -728,8 +698,7 @@ function ChartPanel({ mode = 'overlay' }) {
             },
             tooltip: {
                 ...options.plugins.tooltip,
-                mode: 'nearest',
-                axis: 'xy', // Ensure tooltip behaves exactly as the interaction configuration for stacked subplots
+                position: 'topFollowX', // Dock to the top and follow mouse X horizontally
                 callbacks: {
                     ...options.plugins.tooltip.callbacks,
                     label: function (context) {

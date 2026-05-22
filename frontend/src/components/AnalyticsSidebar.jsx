@@ -72,6 +72,59 @@ function AnalyticsSidebar() {
     const [landCoverLoading, setLandCoverLoading] = useState(false);
     const [timeScale, setTimeScale] = useState('monthly');
     const [selectedPeriod, setSelectedPeriod] = useState(0);
+    // Horizontal Sidebar Resizing States
+    const [sidebarWidth, setSidebarWidth] = useState(() => {
+        const savedWidth = localStorage.getItem('analytics-sidebar-width');
+        return savedWidth ? parseInt(savedWidth, 10) : 480;
+    });
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Apply '--sidebar-width' CSS variable to document element dynamically
+    useEffect(() => {
+        document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
+    }, [sidebarWidth]);
+
+    // Handle mouse movement for resizing
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            const newWidth = window.innerWidth - e.clientX;
+            const minWidth = 280;
+            const maxWidth = Math.floor(window.innerWidth * 0.75);
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+                setSidebarWidth(newWidth);
+                localStorage.setItem('analytics-sidebar-width', newWidth);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+        };
+
+        if (isDragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging]);
+
+    const startResizing = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    // Render Resizer Handle
+    const renderResizer = () => (
+        <div
+            className={`sidebar-resizer ${isDragging ? 'active' : ''}`}
+            onMouseDown={startResizing}
+        />
+    );
+
 
     // Sync chart param with selected layer
     useEffect(() => {
@@ -620,7 +673,7 @@ function AnalyticsSidebar() {
     // Case -1: Baseline Mode - Hide gauge, maximize timeseries
     if (dateMode === 'baseline') {
         return (
-            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>{renderResizer()}
                 {renderToggleButton()}
                 <div style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'hidden' }}>
                     <ChartPanel mode="sidebar" />
@@ -632,7 +685,7 @@ function AnalyticsSidebar() {
     // Case 0: Weather Tab - Show Weather Dashboard
     if (activeChartParam === 'weather') {
         return (
-            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>{renderResizer()}
                 <div className="weather-dashboard" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'hidden' }}>
                     {/* Header */}
                     <div style={{
@@ -674,7 +727,7 @@ function AnalyticsSidebar() {
         // Context A: Layer Selection Context -> Show Full Dashboard
         if (showDashboard && selectedLayer === 'ndvi') {
             return (
-                <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+                <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>{renderResizer()}
                     {renderToggleButton()}
                     <div className="ndvi-dashboard" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'hidden' }}>
                         {/* Header */}
@@ -868,7 +921,7 @@ function AnalyticsSidebar() {
         const reportCharts = getReportCharts();
         if (reportCharts) {
             return (
-                <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+                <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>{renderResizer()}
                     {renderToggleButton()}
                     {reportCharts}
                     {/* Chart Panel - Sidebar Mode */}
@@ -884,7 +937,7 @@ function AnalyticsSidebar() {
     // Only show Crop Health Statistics if NDVI layer is selected (Pre-computation/Map View)
     if (selectedLayer !== 'ndvi') {
         return (
-            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+            <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>{renderResizer()}
                 {renderToggleButton()}
                 <div className="default-analytics-placeholder">
                     <h3>{t('data_analytics')}</h3>
@@ -912,7 +965,7 @@ function AnalyticsSidebar() {
 
     // If no data, show placeholder (NDVI selected but no data fetched)
     return (
-        <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>
+        <aside className={`analytics-sidebar ${!isRightPanelOpen ? 'collapsed' : ''}`}>{renderResizer()}
             {renderToggleButton()}
             <div className="default-analytics-placeholder">
                 <h3>{t('data_analytics')}</h3>

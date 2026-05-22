@@ -4517,3 +4517,42 @@ body.dark-mode .react-baseline-alert-card {
     width: 0%;
   }
 }
+
+/* ==========================================================
+   DYNAMIC SIDEBAR HORIZONTAL RESIZER STYLES
+   ========================================================== */
+
+/* Resizer Drag Handle styling */
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  left: -4px; /* Centered on left border line */
+  width: 8px; /* Decent click area */
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1100; /* Stays above panel toggle button */
+  background: transparent;
+  transition: background-color 0.2s ease, border-left 0.2s ease;
+}
+
+/* Hover and active dragging styles */
+.sidebar-resizer:hover,
+.sidebar-resizer.active {
+  background-color: rgba(34, 197, 94, 0.05); /* Soft, subtle green highlight background */
+  border-left: 4px solid var(--krishi-green); /* Highly premium green line matching theme */
+}
+
+/* Desktop absolute sidebar override using dynamic CSS variable */
+@media (min-width: 1025px) {
+  .analytics-sidebar {
+    width: var(--sidebar-width, 480px) !important;
+    min-width: 280px !important;
+    max-width: 75vw !important;
+  }
+
+  /* Dynamically push Leaflet controls based on actual width of open sidebar */
+  .map-container.right-panel-open .leaflet-right {
+    right: calc(var(--sidebar-width, 480px) + 8px) !important;
+    transition: right 0.1s ease-out; /* Keeps dragging responsive but slight damping on controls */
+  }
+}

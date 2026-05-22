@@ -27,6 +27,30 @@ ChartJS.register(
     Filler
 );
 
+// Register custom top positioner that follows mouse X-coordinate but stays at the top of the chart grid area
+Tooltip.positioners.topFollowX = function(items, eventPosition) {
+    const chart = this.chart;
+    if (!chart || !chart.chartArea) {
+        return {
+            x: eventPosition.x,
+            y: eventPosition.y
+        };
+    }
+    
+    // Horizontal: follow the event/mouse X coordinate
+    const x = eventPosition.x;
+    
+    // Vertical: align to the top of the chart grid area plus a tiny padding
+    const y = chart.chartArea.top + 8;
+    
+    return {
+        x,
+        y,
+        xAlign: 'center',
+        yAlign: 'top'
+    };
+};
+
 const chartParams = [
     { key: 'pca', label: 'opt_pca' },
     { key: 'ndvi', label: 'opt_ndvi' },
@@ -82,6 +106,7 @@ function ChartPanel({ mode = 'overlay' }) {
     const [selectedWeatherParam, setSelectedWeatherParam] = useState('eto');
     const [isCollapsed, setIsCollapsed] = useState(true); // Default collapsed
     const [isExpanded, setIsExpanded] = useState(false); // Modal state
+    const [viewMode, setViewMode] = useState('combined'); // 'combined' or 'split'
     const chartRef = useRef(null);
 
     // Sidebar mode: Always expanded, no toggle
@@ -298,7 +323,99 @@ function ChartPanel({ mode = 'overlay' }) {
     const isBaselineSplit = dateMode === 'baseline' && chartData && chartData.length > 0;
     const splitYears = getSplitYearsData();
 
-    const chartConfig = !isBaselineSplit ? getChartConfigForData(chartData) : null;
+    const getCombinedChartConfig = () => {
+        if (!isBaselineSplit || !splitYears || splitYears.length === 0) {
+            return null;
+        }
+
+        const dataKey = activeChartParam;
+        const baseColor = paramColors[dataKey] || paramColors.ndvi;
+        
+        // Dynamic colors for each year
+        const yearColors = [
+            baseColor,
+            { border: 'rgb(249, 115, 22)', background: 'rgba(249, 115, 22, 0.1)' }, // Orange
+            { border: 'rgb(139, 92, 246)', background: 'rgba(139, 92, 246, 0.1)' }, // Purple
+            { border: 'rgb(14, 165, 233)', background: 'rgba(14, 165, 233, 0.1)' }, // Sky Blue
+            { border: 'rgb(239, 68, 68)', background: 'rgba(239, 68, 68, 0.1)' }, // Red
+        ];
+
+        const datasets = [];
+
+        splitYears.forEach((yearItem, index) => {
+            const colors = yearColors[index % yearColors.length];
+            const borderRGB = colors.border.match(/\d+/g);
+            const lightColor = borderRGB ? `rgba(${borderRGB[0]}, ${borderRGB[1]}, ${borderRGB[2]}, 0.15)` : colors.background;
+
+            // Generate paired points relative to start of the season
+            const pairedPoints = yearItem.subset.map(d => {
+                const relativeDays = (Date.parse(d.date) - Date.parse(yearItem.startDateStr)) / (1000 * 60 * 60 * 24);
+                
+                let value = null;
+                if (activeChartParam === 'weather') {
+                    const weatherConfig = weatherParams.find(p => p.key === selectedWeatherParam);
+                    if (weatherConfig) {
+                        const rawValue = d[weatherConfig.dataKey];
+                        if (rawValue !== null && rawValue !== undefined && !isNaN(Number(rawValue))) {
+                            const numValue = Number(rawValue);
+                            value = weatherConfig.transform ? weatherConfig.transform(numValue) : numValue;
+                        }
+                    }
+                } else if (activeChartParam === 'lst') {
+                    const kelvin = d.lst;
+                    if (kelvin !== null && kelvin !== undefined) value = kelvin - 273.15;
+                } else if (activeChartParam === 'soilmoisture_mm') {
+                    const val = d.soilmoisture_mm ?? d.soilmoisture;
+                    if (val !== null && val !== undefined && !isNaN(Number(val))) value = Number(val);
+                } else if (activeChartParam === 'chlorophyll') {
+                    const val = d.clre;
+                    if (val !== null && val !== undefined && !isNaN(Number(val))) value = Number(val);
+                } else {
+                    const val = d[activeChartParam];
+                    if (val !== null && val !== undefined && !isNaN(Number(val))) value = Number(val);
+                }
+
+                return { x: relativeDays, y: value, originalDate: d.date };
+            }).filter(p => p.y !== null);
+
+            // Sort points by x (relative timeline)
+            pairedPoints.sort((a, b) => a.x - b.x);
+
+            datasets.push({
+                label: `${index === 0 ? 'Baseline Year' : 'Historical Reference'} (${yearItem.label})`,
+                data: pairedPoints,
+                borderColor: colors.border,
+                backgroundColor: lightColor,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: colors.border,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                spanGaps: true,
+                tension: 0.4,
+                yAxisID: `y_${index}`, // Bind to unique vertical subplot axis
+            });
+        });
+
+        return {
+            labels: [], // Not needed for linear scale
+            datasets
+        };
+    };
+
+    const getBaselineDuration = () => {
+        if (!splitYears || splitYears.length === 0) return 365;
+        const duration = (Date.parse(splitYears[0].endDateStr) - Date.parse(splitYears[0].startDateStr)) / (1000 * 60 * 60 * 24);
+        return Math.max(365, duration);
+    };
+
+    const isCombinedMode = isBaselineSplit && viewMode === 'combined';
+    const combinedChartConfig = isCombinedMode ? getCombinedChartConfig() : null;
+
+    const chartConfig = isBaselineSplit
+        ? (viewMode === 'combined' ? combinedChartConfig : null)
+        : getChartConfigForData(chartData);
 
     // Dates range helper
     const getDatesRange = (subset) => {
@@ -336,7 +453,13 @@ function ChartPanel({ mode = 'overlay' }) {
                 easing: 'easeOutQuart', // Smooth easing for value growth
                 duration: 500, // Longer duration for the rise effect
                 from: (ctx) => {
-                    return ctx.chart.scales.y.getPixelForValue(ctx.chart.scales.y.min);
+                    const dataset = ctx.chart.data.datasets[ctx.datasetIndex];
+                    const yAxisID = dataset?.yAxisID || 'y';
+                    const scale = ctx.chart.scales[yAxisID];
+                    if (scale) {
+                        return scale.getPixelForValue(scale.min);
+                    }
+                    return ctx.chart.height;
                 },
                 delay: (ctx) => {
                     if (ctx.type !== 'data' || ctx.yStarted) {
@@ -436,6 +559,159 @@ function ChartPanel({ mode = 'overlay' }) {
 
     };
 
+    // Dynamically build vertically stacked scale panels for baseline mode
+    const buildCombinedScales = () => {
+        const scalesObj = {
+            x: {
+                type: 'linear',
+                min: 0,
+                max: getBaselineDuration(),
+                grid: {
+                    display: true, // Show vertical rulers connecting stacked subplots
+                    color: isDarkMode ? 'rgba(58, 61, 64, 0.4)' : 'rgba(226, 232, 240, 0.4)',
+                    borderDash: [5, 5],
+                    drawOnChartArea: true,
+                },
+                ticks: {
+                    color: isDarkMode ? '#a0aec0' : '#64748b',
+                    font: {
+                        family: 'Poppins',
+                        size: 10,
+                    },
+                    maxRotation: 0,
+                    minRotation: 0,
+                    callback: function(value) {
+                        if (!splitYears || splitYears.length === 0) return value;
+                        const baselineStart = new Date(splitYears[0].startDateStr);
+                        const tickDate = new Date(baselineStart.getTime() + value * 24 * 60 * 60 * 1000);
+                        const pad = (n) => String(n).padStart(2, '0');
+                        return `${pad(tickDate.getMonth() + 1)}-${pad(tickDate.getDate())}`;
+                    }
+                }
+            }
+        };
+
+        if (splitYears && splitYears.length > 0) {
+            splitYears.forEach((yearItem, index) => {
+                scalesObj[`y_${index}`] = {
+                    type: 'linear',
+                    stack: 'yStacked', // Key property to stack vertically
+                    stackWeight: 1,    // Distribute height equally
+                    position: 'left',
+                    grid: {
+                        color: isDarkMode ? 'rgba(58, 61, 64, 0.3)' : 'rgba(226, 232, 240, 0.3)',
+                        borderDash: [5, 5],
+                        drawOnChartArea: true,
+                    },
+                    ticks: {
+                        color: isDarkMode ? '#a0aec0' : '#64748b',
+                        font: {
+                            family: 'Poppins',
+                            size: 9,
+                        },
+                    },
+                    title: {
+                        display: true,
+                        text: `${index === 0 ? 'Baseline' : 'Ref'} (${yearItem.label})`,
+                        color: isDarkMode ? '#e8e6e3' : '#334155',
+                        font: {
+                            family: 'Poppins',
+                            size: 10,
+                            weight: '600'
+                        }
+                    },
+                    beginAtZero: activeChartParam !== 'lst',
+                };
+            });
+        } else {
+            scalesObj.y = options.scales.y;
+        }
+
+        return scalesObj;
+    };
+
+    const combinedOptions = {
+        ...options,
+        plugins: {
+            ...options.plugins,
+            legend: {
+                ...options.plugins.legend,
+                labels: {
+                    ...options.plugins.legend.labels,
+                    filter: function (legendItem, chartData) {
+                        const datasets = chartData.datasets;
+                        const hasRanges = datasets.some(d => d.label === 'Max Range' || d.label === 'Min Range');
+                        if (!hasRanges) return true;
+                        return legendItem.datasetIndex === 1;
+                    }
+                }
+            },
+            tooltip: {
+                ...options.plugins.tooltip,
+                position: 'topFollowX', // Dock to the top and follow mouse X horizontally
+                callbacks: {
+                    ...options.plugins.tooltip.callbacks,
+                    label: function (context) {
+                        const point = context.raw;
+                        let value = context.parsed.y;
+                        const dateStr = point && point.originalDate ? ` (${point.originalDate})` : '';
+                        if (value !== null && value !== undefined) {
+                            return `${context.dataset.label}: ${value.toFixed(3)}${dateStr}`;
+                        }
+                        return `${context.dataset.label}: N/A`;
+                    }
+                }
+            }
+        },
+        scales: buildCombinedScales()
+    };
+
+    const renderCombinedStats = () => {
+        if (!combinedChartConfig || activeChartParam === 'weather') return null;
+
+        return (
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: '12px 24px',
+                padding: '10px 12px',
+                marginTop: '8px',
+                background: 'var(--card-bg)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                fontSize: '11px',
+                fontWeight: '500'
+            }}>
+                {combinedChartConfig.datasets.map((dataset, idx) => {
+                    const validValues = dataset.data.map(p => p.y).filter(v => v !== null && v !== undefined);
+                    if (validValues.length === 0) return null;
+
+                    const min = Math.min(...validValues);
+                    const max = Math.max(...validValues);
+                    const mean = validValues.reduce((a, b) => a + b, 0) / validValues.length;
+                    const color = dataset.borderColor;
+
+                    return (
+                        <div key={idx} style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px', 
+                            borderRight: idx < combinedChartConfig.datasets.length - 1 ? '1px solid var(--border-color)' : 'none', 
+                            paddingRight: '16px' 
+                        }}>
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: color }}></span>
+                            <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>{dataset.label.replace('Baseline Year ', '').replace('Historical Reference ', '')}:</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>Min: <strong style={{ color: '#0ea5e9' }}>{min.toFixed(3)}</strong></span>
+                            <span style={{ color: 'var(--text-secondary)' }}>Mean: <strong style={{ color: '#10b981' }}>{mean.toFixed(3)}</strong></span>
+                            <span style={{ color: 'var(--text-secondary)' }}>Max: <strong style={{ color: '#f59e0b' }}>{max.toFixed(3)}</strong></span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
 
 
     const renderStatsForConfig = (config) => {
@@ -487,6 +763,51 @@ function ChartPanel({ mode = 'overlay' }) {
                     <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
                         {chartTitle}
                     </h4>
+
+                    {/* View Mode Toggle when baseline mode is split */}
+                    {isBaselineSplit && (
+                        <div style={{
+                            display: 'flex',
+                            background: isDarkMode ? '#2d2d2d' : '#f1f5f9',
+                            padding: '2px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-color)'
+                        }}>
+                            <button
+                                onClick={() => setViewMode('combined')}
+                                style={{
+                                    border: 'none',
+                                    background: viewMode === 'combined' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
+                                    color: viewMode === 'combined' ? 'var(--krishi-green)' : 'var(--text-secondary)',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Combined
+                            </button>
+                            <button
+                                onClick={() => setViewMode('split')}
+                                style={{
+                                    border: 'none',
+                                    background: viewMode === 'split' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
+                                    color: viewMode === 'split' ? 'var(--krishi-green)' : 'var(--text-secondary)',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Split
+                            </button>
+                        </div>
+                    )}
+
                     <button
                         onClick={() => setIsExpanded(true)}
                         style={{
@@ -546,11 +867,25 @@ function ChartPanel({ mode = 'overlay' }) {
                     </div>
                 )}
 
-                <div className="chart-wrap" style={{ overflowY: isBaselineSplit ? 'auto' : 'hidden' }}>
+                <div className="chart-wrap" style={{ overflowY: (isBaselineSplit && viewMode === 'split') ? 'auto' : 'hidden' }}>
                     {!chartData ? (
                         <div className="chart-placeholder">
                             <p>{t('opt_Draw')}</p>
                         </div>
+                    ) : isCombinedMode ? (
+                        <>
+                            <div style={{ width: '100%', height: 'calc(100% - 60px)' }}>
+                                {combinedChartConfig && (
+                                    <Line
+                                        ref={chartRef}
+                                        data={combinedChartConfig}
+                                        options={combinedOptions}
+                                    />
+                                )}
+                            </div>
+                            {/* Statistics Display - Combined Stats */}
+                            {combinedChartConfig && activeChartParam !== 'weather' && renderCombinedStats()}
+                        </>
                     ) : isBaselineSplit ? (
                         <div style={{ padding: '8px 0' }}>
                             {splitYears.map((yearItem, index) => (
@@ -644,8 +979,17 @@ function ChartPanel({ mode = 'overlay' }) {
                                 <i className="fa-solid fa-xmark"></i>
                             </button>
                         </div>
-                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
-                            {isBaselineSplit ? (
+                        <div style={{ flex: 1, overflowY: (isBaselineSplit && viewMode === 'split') ? 'auto' : 'hidden', paddingRight: '8px' }}>
+                            {isCombinedMode ? (
+                                <>
+                                    <div style={{ height: '65vh', position: 'relative' }}>
+                                        {combinedChartConfig && <Line data={combinedChartConfig} options={{ ...combinedOptions, maintainAspectRatio: false }} />}
+                                    </div>
+                                    <div style={{ marginTop: '12px' }}>
+                                        {combinedChartConfig && activeChartParam !== 'weather' && renderCombinedStats()}
+                                    </div>
+                                </>
+                            ) : isBaselineSplit ? (
                                 <>
                                     {splitYears.map((yearItem, index) => (
                                         <div key={index} style={{ marginBottom: '32px' }}>

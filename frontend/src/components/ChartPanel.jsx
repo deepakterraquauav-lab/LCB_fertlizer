@@ -107,6 +107,7 @@ function ChartPanel({ mode = 'overlay' }) {
     const [isCollapsed, setIsCollapsed] = useState(true); // Default collapsed
     const [isExpanded, setIsExpanded] = useState(false); // Modal state
     const [viewMode, setViewMode] = useState('combined'); // 'combined' or 'split'
+    const [isNormalized, setIsNormalized] = useState(false); // Track normalization mode
     const chartRef = useRef(null);
 
     // Sidebar mode: Always expanded, no toggle
@@ -179,10 +180,7 @@ function ChartPanel({ mode = 'overlay' }) {
 
         const labels = pairedPoints.map(p => p.date);
         const dataValues = pairedPoints.map(p => p.value);
-
         // Calculate min, max, and mean for each date point
-        // For now, we'll use the single value as mean and calculate a range
-        // In a real scenario, you might have multiple readings per day
         const validValues = dataValues.filter(v => v !== null && v !== undefined);
         if (validValues.length === 0) {
             return null;
@@ -192,9 +190,19 @@ function ChartPanel({ mode = 'overlay' }) {
         const range = globalMax - globalMin;
 
         // Create datasets with min/max bands (20% above/below for better visibility)
-        const meanValues = dataValues;
-        const minValues = dataValues.map(v => v !== null ? v * 0.7 : null); // 20% below for visualization
-        const maxValues = dataValues.map(v => v !== null ? v * 1.3 : null); // 20% above for visualization
+        const meanValues = pairedPoints.map(p => ({
+            y: isNormalized ? (range === 0 ? 0.5 : (p.value - globalMin) / range) : p.value,
+            rawY: p.value,
+            originalDate: p.date
+        }));
+        const minValues = pairedPoints.map(p => ({
+            y: isNormalized ? (range === 0 ? 0.5 * 0.7 : ((p.value * 0.7) - globalMin) / range) : p.value * 0.7,
+            rawY: p.value * 0.7
+        }));
+        const maxValues = pairedPoints.map(p => ({
+            y: isNormalized ? (range === 0 ? 0.5 * 1.3 : ((p.value * 1.3) - globalMin) / range) : p.value * 1.3,
+            rawY: p.value * 1.3
+        }));
 
         const colors = paramColors[dataKey] || paramColors.ndvi;
 
@@ -204,9 +212,6 @@ function ChartPanel({ mode = 'overlay' }) {
             const weatherConfig = weatherParams.find(p => p.key === selectedWeatherParam);
             if (weatherConfig) {
                 const rawLabel = t(weatherConfig.label);
-                // Remove last parenthesized group if it exists (stripping existing unit like "(mm)")
-                // but preserve (ETc) if it's not the very last thing or if we want to be safe
-                // The regex \s*\([^)]*\)$ matches a space (optional) followed by (...) at end of string
                 const cleanLabel = rawLabel.replace(/\s*\([^)]*\)$/, '');
                 chartLabel = `${cleanLabel} (${weatherConfig.unit})${labelSuffix}`;
             } else {
@@ -218,10 +223,13 @@ function ChartPanel({ mode = 'overlay' }) {
             chartLabel = `${activeChartParam === 'lst' ? `${paramLabel} (°C)` : paramLabel}${labelSuffix}`;
         }
 
+        if (isNormalized) {
+            chartLabel += ' (Normalized)';
+        }
+
         // Extract RGB from border color for transparency
         const borderRGB = colors.border.match(/\d+/g);
         const lightColor = borderRGB ? `rgba(${borderRGB[0]}, ${borderRGB[1]}, ${borderRGB[2]}, 0.15)` : colors.background;
-        const mediumColor = borderRGB ? `rgba(${borderRGB[0]}, ${borderRGB[1]}, ${borderRGB[2]}, 0.3)` : colors.background;
 
         return {
             labels,
@@ -381,8 +389,20 @@ function ChartPanel({ mode = 'overlay' }) {
             // Sort points by x (relative timeline)
             pairedPoints.sort((a, b) => a.x - b.x);
 
+            const validYValues = pairedPoints.map(p => p.y).filter(v => v !== null && v !== undefined);
+            const minY = validYValues.length > 0 ? Math.min(...validYValues) : 0;
+            const maxY = validYValues.length > 0 ? Math.max(...validYValues) : 0;
+            const range = maxY - minY;
+
+            pairedPoints.forEach(p => {
+                p.rawY = p.y;
+                if (isNormalized && validYValues.length > 0) {
+                    p.y = range === 0 ? 0.5 : (p.y - minY) / range;
+                }
+            });
+
             datasets.push({
-                label: `${index === 0 ? 'Baseline Year' : 'Historical Reference'} (${yearItem.label})`,
+                label: `${index === 0 ? 'Baseline Year' : 'Historical Reference'} (${yearItem.label})${isNormalized ? ' (Normalized)' : ''}`,
                 data: pairedPoints,
                 borderColor: colors.border,
                 backgroundColor: lightColor,
@@ -516,8 +536,12 @@ function ChartPanel({ mode = 'overlay' }) {
                 },
                 callbacks: {
                     label: function (context) {
+                        const point = context.raw;
                         let value = context.parsed.y;
                         if (value !== null && value !== undefined) {
+                            if (isNormalized && point && point.rawY !== undefined) {
+                                return `${context.dataset.label.replace(' (Normalized)', '')}: ${point.rawY.toFixed(3)} (Norm: ${value.toFixed(2)})`;
+                            }
                             return `${context.dataset.label}: ${value.toFixed(3)}`;
                         }
                         return `${context.dataset.label}: N/A`;
@@ -552,8 +576,21 @@ function ChartPanel({ mode = 'overlay' }) {
                         family: 'Poppins',
                         size: 9, // Smaller ticks
                     },
+                    autoSkip: false,
+                    includeBounds: true,
+                    stepSize: isNormalized ? 0.2 : undefined,
+                    callback: function(value) {
+                        if (isNormalized) {
+                            if (value >= -0.01 && value <= 1.01) {
+                                return value.toFixed(1);
+                            }
+                            return '';
+                        }
+                        return value;
+                    }
                 },
                 beginAtZero: activeChartParam !== 'lst',
+                ...(isNormalized ? { min: 0.0, max: 1.0 } : {}),
             },
         },
 
@@ -596,7 +633,7 @@ function ChartPanel({ mode = 'overlay' }) {
                 scalesObj[`y_${index}`] = {
                     type: 'linear',
                     stack: 'yStacked', // Key property to stack vertically
-                    stackWeight: 1,    // Distribute height equally
+                    stackWeight: 6,    // Distribute height equally with substantial weight
                     position: 'left',
                     grid: {
                         color: isDarkMode ? 'rgba(58, 61, 64, 0.3)' : 'rgba(226, 232, 240, 0.3)',
@@ -609,10 +646,22 @@ function ChartPanel({ mode = 'overlay' }) {
                             family: 'Poppins',
                             size: 9,
                         },
+                        autoSkip: false,
+                        includeBounds: true,
+                        stepSize: isNormalized ? 0.2 : undefined,
+                        callback: function(value) {
+                            if (isNormalized) {
+                                if (value >= -0.01 && value <= 1.01) {
+                                    return value.toFixed(1);
+                                }
+                                return '';
+                            }
+                            return value;
+                        }
                     },
                     title: {
                         display: true,
-                        text: `${index === 0 ? 'Baseline' : 'Ref'} (${yearItem.label})`,
+                        text: `${index === 0 ? 'Baseline' : 'Ref'} (${yearItem.label})${isNormalized ? ' (Norm)' : ''}`,
                         color: isDarkMode ? '#e8e6e3' : '#334155',
                         font: {
                             family: 'Poppins',
@@ -621,7 +670,33 @@ function ChartPanel({ mode = 'overlay' }) {
                         }
                     },
                     beginAtZero: activeChartParam !== 'lst',
+                    ...(isNormalized ? { min: 0.0, max: 1.0 } : {}),
                 };
+
+                // Add an invisible spacer scale between stacked subplots to avoid tick label collision and create a visual gap
+                if (index < splitYears.length - 1) {
+                    scalesObj[`y_spacer_${index}`] = {
+                        type: 'linear',
+                        stack: 'yStacked',
+                        stackWeight: 1.2,
+                        position: 'left',
+                        display: true,
+                        grid: {
+                            display: false,
+                            drawTicks: false,
+                            drawOnChartArea: false,
+                        },
+                        border: {
+                            display: false,
+                        },
+                        ticks: {
+                            display: false,
+                        },
+                        title: {
+                            display: false,
+                        }
+                    };
+                }
             });
         } else {
             scalesObj.y = options.scales.y;
@@ -632,6 +707,11 @@ function ChartPanel({ mode = 'overlay' }) {
 
     const combinedOptions = {
         ...options,
+        interaction: {
+            intersect: false,
+            mode: 'nearest',
+            axis: 'xy', // Use 'xy' axis to consider vertical distance, ensuring mouse hovering triggers correctly on stacked subplots
+        },
         plugins: {
             ...options.plugins,
             legend: {
@@ -648,7 +728,8 @@ function ChartPanel({ mode = 'overlay' }) {
             },
             tooltip: {
                 ...options.plugins.tooltip,
-                position: 'topFollowX', // Dock to the top and follow mouse X horizontally
+                mode: 'nearest',
+                axis: 'xy', // Ensure tooltip behaves exactly as the interaction configuration for stacked subplots
                 callbacks: {
                     ...options.plugins.tooltip.callbacks,
                     label: function (context) {
@@ -656,6 +737,9 @@ function ChartPanel({ mode = 'overlay' }) {
                         let value = context.parsed.y;
                         const dateStr = point && point.originalDate ? ` (${point.originalDate})` : '';
                         if (value !== null && value !== undefined) {
+                            if (isNormalized && point && point.rawY !== undefined) {
+                                return `${context.dataset.label.replace(' (Normalized)', '')}: ${point.rawY.toFixed(3)} (Norm: ${value.toFixed(2)})${dateStr}`;
+                            }
                             return `${context.dataset.label}: ${value.toFixed(3)}${dateStr}`;
                         }
                         return `${context.dataset.label}: N/A`;
@@ -684,7 +768,7 @@ function ChartPanel({ mode = 'overlay' }) {
                 fontWeight: '500'
             }}>
                 {combinedChartConfig.datasets.map((dataset, idx) => {
-                    const validValues = dataset.data.map(p => p.y).filter(v => v !== null && v !== undefined);
+                    const validValues = dataset.data.map(p => (p && typeof p === 'object' && p.rawY !== undefined) ? p.rawY : p.y).filter(v => v !== null && v !== undefined);
                     if (validValues.length === 0) return null;
 
                     const min = Math.min(...validValues);
@@ -701,7 +785,7 @@ function ChartPanel({ mode = 'overlay' }) {
                             paddingRight: '16px' 
                         }}>
                             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: color }}></span>
-                            <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>{dataset.label.replace('Baseline Year ', '').replace('Historical Reference ', '')}:</span>
+                            <span style={{ color: 'var(--text-main)', fontWeight: '600' }}>{dataset.label.replace('Baseline Year ', '').replace('Historical Reference ', '').replace(' (Normalized)', '')}:</span>
                             <span style={{ color: 'var(--text-secondary)' }}>Min: <strong style={{ color: '#0ea5e9' }}>{min.toFixed(3)}</strong></span>
                             <span style={{ color: 'var(--text-secondary)' }}>Mean: <strong style={{ color: '#10b981' }}>{mean.toFixed(3)}</strong></span>
                             <span style={{ color: 'var(--text-secondary)' }}>Max: <strong style={{ color: '#f59e0b' }}>{max.toFixed(3)}</strong></span>
@@ -720,7 +804,12 @@ function ChartPanel({ mode = 'overlay' }) {
         const meanDataset = config.datasets.find(d => d.label.includes('Mean') || (d.label && !d.label.includes('Range')));
         if (!meanDataset) return null;
 
-        const validValues = meanDataset.data.filter(v => v !== null && v !== undefined);
+        const validValues = meanDataset.data.map(p => {
+            if (p && typeof p === 'object' && p.rawY !== undefined) return p.rawY;
+            if (p && typeof p === 'object' && p.y !== undefined) return p.y;
+            return p;
+        }).filter(v => v !== null && v !== undefined);
+        
         if (validValues.length === 0) return null;
 
         const min = Math.min(...validValues);
@@ -764,47 +853,92 @@ function ChartPanel({ mode = 'overlay' }) {
                         {chartTitle}
                     </h4>
 
-                    {/* View Mode Toggle when baseline mode is split */}
+                    {/* View Mode and Normalization Toggles when baseline mode is split */}
                     {isBaselineSplit && (
-                        <div style={{
-                            display: 'flex',
-                            background: isDarkMode ? '#2d2d2d' : '#f1f5f9',
-                            padding: '2px',
-                            borderRadius: '8px',
-                            border: '1px solid var(--border-color)'
-                        }}>
-                            <button
-                                onClick={() => setViewMode('combined')}
-                                style={{
-                                    border: 'none',
-                                    background: viewMode === 'combined' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
-                                    color: viewMode === 'combined' ? 'var(--krishi-green)' : 'var(--text-secondary)',
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                Combined
-                            </button>
-                            <button
-                                onClick={() => setViewMode('split')}
-                                style={{
-                                    border: 'none',
-                                    background: viewMode === 'split' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
-                                    color: viewMode === 'split' ? 'var(--krishi-green)' : 'var(--text-secondary)',
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    padding: '4px 10px',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                Split
-                            </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {/* Combined / Split toggle */}
+                            <div style={{
+                                display: 'flex',
+                                background: isDarkMode ? '#2d2d2d' : '#f1f5f9',
+                                padding: '2px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)'
+                            }}>
+                                <button
+                                    onClick={() => setViewMode('combined')}
+                                    style={{
+                                        border: 'none',
+                                        background: viewMode === 'combined' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
+                                        color: viewMode === 'combined' ? 'var(--krishi-green)' : 'var(--text-secondary)',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Combined
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('split')}
+                                    style={{
+                                        border: 'none',
+                                        background: viewMode === 'split' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
+                                        color: viewMode === 'split' ? 'var(--krishi-green)' : 'var(--text-secondary)',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Split
+                                </button>
+                            </div>
+
+                            {/* Absolute / Normalized toggle */}
+                            <div style={{
+                                display: 'flex',
+                                background: isDarkMode ? '#2d2d2d' : '#f1f5f9',
+                                padding: '2px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)'
+                            }}>
+                                <button
+                                    onClick={() => setIsNormalized(false)}
+                                    style={{
+                                        border: 'none',
+                                        background: !isNormalized ? (isDarkMode ? '#444' : '#fff') : 'transparent',
+                                        color: !isNormalized ? 'var(--krishi-green)' : 'var(--text-secondary)',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Absolute
+                                </button>
+                                <button
+                                    onClick={() => setIsNormalized(true)}
+                                    style={{
+                                        border: 'none',
+                                        background: isNormalized ? (isDarkMode ? '#444' : '#fff') : 'transparent',
+                                        color: isNormalized ? 'var(--krishi-green)' : 'var(--text-secondary)',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Normalized
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -877,6 +1011,7 @@ function ChartPanel({ mode = 'overlay' }) {
                             <div style={{ width: '100%', height: 'calc(100% - 60px)' }}>
                                 {combinedChartConfig && (
                                     <Line
+                                        key={`${viewMode}_${isNormalized}_${activeChartParam}`}
                                         ref={chartRef}
                                         data={combinedChartConfig}
                                         options={combinedOptions}
@@ -899,6 +1034,7 @@ function ChartPanel({ mode = 'overlay' }) {
                                     <div style={{ width: '100%', height: '180px', padding: '0 12px 12px 12px' }}>
                                         {yearItem.config && (
                                             <Line
+                                                key={`split_${index}_${isNormalized}_${activeChartParam}`}
                                                 data={yearItem.config}
                                                 options={options}
                                             />
@@ -913,14 +1049,15 @@ function ChartPanel({ mode = 'overlay' }) {
                     ) : (
                         <>
                             <div style={{ width: '100%', height: 'calc(100% - 60px)' }}>
-                                {chartConfig && (
-                                    <Line
-                                        ref={chartRef}
-                                        data={chartConfig}
-                                        options={options}
-                                    />
-                                )}
-                            </div>
+                                        {chartConfig && (
+                                            <Line
+                                                key={`${viewMode}_${isNormalized}_${activeChartParam}`}
+                                                ref={chartRef}
+                                                data={chartConfig}
+                                                options={options}
+                                            />
+                                        )}
+                                    </div>
                             {/* Statistics Display - Hidden for weather tab */}
                             {chartConfig && activeChartParam !== 'weather' && renderStatsForConfig(chartConfig)}
                         </>
@@ -983,7 +1120,13 @@ function ChartPanel({ mode = 'overlay' }) {
                             {isCombinedMode ? (
                                 <>
                                     <div style={{ height: '65vh', position: 'relative' }}>
-                                        {combinedChartConfig && <Line data={combinedChartConfig} options={{ ...combinedOptions, maintainAspectRatio: false }} />}
+                                        {combinedChartConfig && (
+                                            <Line 
+                                                key={`modal_${viewMode}_${isNormalized}_${activeChartParam}`}
+                                                data={combinedChartConfig} 
+                                                options={{ ...combinedOptions, maintainAspectRatio: false }} 
+                                            />
+                                        )}
                                     </div>
                                     <div style={{ marginTop: '12px' }}>
                                         {combinedChartConfig && activeChartParam !== 'weather' && renderCombinedStats()}
@@ -998,7 +1141,13 @@ function ChartPanel({ mode = 'overlay' }) {
                                                 {index === 0 ? 'Baseline Year' : 'Historical Reference'} ({yearItem.label}) {getDatesRange(yearItem.subset)}
                                             </h3>
                                             <div style={{ height: '32vh', position: 'relative' }}>
-                                                {yearItem.config && <Line data={yearItem.config} options={{ ...options, maintainAspectRatio: false }} />}
+                                                {yearItem.config && (
+                                                    <Line 
+                                                        key={`modal_split_${index}_${isNormalized}_${activeChartParam}`}
+                                                        data={yearItem.config} 
+                                                        options={{ ...options, maintainAspectRatio: false }} 
+                                                    />
+                                                )}
                                             </div>
                                             <div style={{ marginTop: '12px' }}>
                                                 {renderStatsForConfig(yearItem.config)}
@@ -1009,7 +1158,13 @@ function ChartPanel({ mode = 'overlay' }) {
                             ) : (
                                 <>
                                     <div style={{ height: '70vh', position: 'relative' }}>
-                                        {chartConfig && <Line data={chartConfig} options={{ ...options, maintainAspectRatio: false }} />}
+                                        {chartConfig && (
+                                            <Line 
+                                                key={`modal_${viewMode}_${isNormalized}_${activeChartParam}`}
+                                                data={chartConfig} 
+                                                options={{ ...options, maintainAspectRatio: false }} 
+                                            />
+                                        )}
                                     </div>
                                     <div style={{ marginTop: '12px' }}>
                                         {chartConfig && activeChartParam !== 'weather' && renderStatsForConfig(chartConfig)}

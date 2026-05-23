@@ -822,10 +822,9 @@ function ChartPanel({ mode = 'overlay' }) {
                         {chartTitle}
                     </h4>
 
-                    {/* View Mode and Normalization Toggles when baseline mode is split */}
+                    {/* Combined and Normalization Toggle when baseline mode is active */}
                     {isBaselineSplit && (
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            {/* Combined / Split toggle */}
                             <div style={{
                                 display: 'flex',
                                 background: isDarkMode ? '#2d2d2d' : '#f1f5f9',
@@ -834,49 +833,10 @@ function ChartPanel({ mode = 'overlay' }) {
                                 border: '1px solid var(--border-color)'
                             }}>
                                 <button
-                                    onClick={() => setViewMode('combined')}
-                                    style={{
-                                        border: 'none',
-                                        background: viewMode === 'combined' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
-                                        color: viewMode === 'combined' ? 'var(--krishi-green)' : 'var(--text-secondary)',
-                                        fontSize: '11px',
-                                        fontWeight: '600',
-                                        padding: '4px 10px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
+                                    onClick={() => {
+                                        setIsNormalized(false);
+                                        setViewMode('combined');
                                     }}
-                                >
-                                    Combined
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('split')}
-                                    style={{
-                                        border: 'none',
-                                        background: viewMode === 'split' ? (isDarkMode ? '#444' : '#fff') : 'transparent',
-                                        color: viewMode === 'split' ? 'var(--krishi-green)' : 'var(--text-secondary)',
-                                        fontSize: '11px',
-                                        fontWeight: '600',
-                                        padding: '4px 10px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    Split
-                                </button>
-                            </div>
-
-                            {/* Absolute / Normalized toggle */}
-                            <div style={{
-                                display: 'flex',
-                                background: isDarkMode ? '#2d2d2d' : '#f1f5f9',
-                                padding: '2px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-color)'
-                            }}>
-                                <button
-                                    onClick={() => setIsNormalized(false)}
                                     style={{
                                         border: 'none',
                                         background: !isNormalized ? (isDarkMode ? '#444' : '#fff') : 'transparent',
@@ -889,10 +849,13 @@ function ChartPanel({ mode = 'overlay' }) {
                                         transition: 'all 0.2s'
                                     }}
                                 >
-                                    Absolute
+                                    Combined
                                 </button>
                                 <button
-                                    onClick={() => setIsNormalized(true)}
+                                    onClick={() => {
+                                        setIsNormalized(true);
+                                        setViewMode('combined');
+                                    }}
                                     style={{
                                         border: 'none',
                                         background: isNormalized ? (isDarkMode ? '#444' : '#fff') : 'transparent',

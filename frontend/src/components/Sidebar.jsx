@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { t } from '../utils/translations';
 import Swal from 'sweetalert2';
@@ -50,11 +50,21 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef(null);
 
+    // Automatically sync startDate and endDate when in baseline mode to prevent bad datetime errors
+    useEffect(() => {
+        if (dateMode === 'baseline') {
+            setEndDate(baselineDate);
+            const dateObj = new Date(baselineDate);
+            dateObj.setFullYear(dateObj.getFullYear() - baselineYears);
+            setStartDate(dateObj.toISOString().split('T')[0]);
+        }
+    }, [dateMode, baselineDate, baselineYears, setStartDate, setEndDate]);
+
     const handleBaselineDateChange = (e) => {
         const selectedDate = e.target.value;
         setBaselineDate(selectedDate);
         setEndDate(selectedDate);
-        
+
         const dateObj = new Date(selectedDate);
         dateObj.setFullYear(dateObj.getFullYear() - baselineYears);
         setStartDate(dateObj.toISOString().split('T')[0]);
@@ -63,7 +73,7 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
     const handleBaselineYearsChange = (e) => {
         const years = parseInt(e.target.value);
         setBaselineYears(years);
-        
+
         const dateObj = new Date(baselineDate);
         dateObj.setFullYear(dateObj.getFullYear() - years);
         setStartDate(dateObj.toISOString().split('T')[0]);
@@ -319,14 +329,13 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
             <div className="sidebar-header">
                 <div className="panel compact-panel">
                     <div className="date-mode-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                        <button 
+                        <button
                             onClick={() => setDateMode('custom')}
                             style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid var(--krishi-green)', background: dateMode === 'custom' ? 'var(--krishi-green)' : 'transparent', color: dateMode === 'custom' ? '#fff' : 'var(--text-main)', borderRadius: '4px', cursor: 'pointer' }}
                         >Custom Range</button>
-                        <button 
+                        <button
                             onClick={() => {
                                 setDateMode('baseline');
-                                showBaselineAlert();
                             }}
                             style={{ flex: 1, padding: '6px', fontSize: '12px', border: '1px solid var(--krishi-green)', background: dateMode === 'baseline' ? 'var(--krishi-green)' : 'transparent', color: dateMode === 'baseline' ? '#fff' : 'var(--text-main)', borderRadius: '4px', cursor: 'pointer' }}
                         >Baseline Mode</button>
@@ -370,8 +379,8 @@ function Sidebar({ onFetchData, onLayerChange, onClearMap, onVectorUpload, onGen
                             </div>
                             <div className="date-field" style={{ width: '100%' }}>
                                 <label>Historical Data</label>
-                                <select 
-                                    value={baselineYears} 
+                                <select
+                                    value={baselineYears}
                                     onChange={handleBaselineYearsChange}
                                     style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-light)', color: 'var(--text-main)', boxSizing: 'border-box' }}
                                 >

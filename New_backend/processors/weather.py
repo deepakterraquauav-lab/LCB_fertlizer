@@ -32,22 +32,23 @@ def get_rainfall_image(date):
     # 1. Get actual data and rename band to 'Rain' so it matches the canvas
     chirps_col = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY") \
                   .filterDate(date, date.advance(1, 'day')) \
-                  .select(['precipitation'], ['Rain']) \
-                  .map(lambda img: img.toFloat())
+                  .select(['precipitation'], ['Rain']) 
+                
                   
     # 2. Create an UNMASKED default canvas (Guarantees 1 band, value 0)
     fallback_rain = ee.Image.constant(0.0).toFloat().rename('Rain')
     
-    # 3. Use server-side conditional logic: if CHIRPS has data, use its mosaic, else fallback
+    # 3. Safely pick actual data or fallback using If, avoiding merge type conflicts
+    count = chirps_col.size()
     rain_img = ee.Image(ee.Algorithms.If(
-        chirps_col.size().gt(0),
-        chirps_col.mosaic().toFloat().rename('Rain'),
+        count.gt(0),
+        ee.Image(chirps_col.first()).unmask(0).toFloat(),
         fallback_rain
     ))
     
     # Calculate effective rainfall
     eff_rain = rain_img.multiply(0.8).toFloat().rename('EffRain')
     
-    chirps_count = chirps_col.size()
+    chirps_count = count
     
     return rain_img, eff_rain, chirps_count

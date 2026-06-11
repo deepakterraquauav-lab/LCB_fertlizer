@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 import logging
 import os
@@ -50,6 +50,73 @@ from pyproj import Geod, CRS, Transformer  # Geodesic and CRS utilities
 
 
 logger = logging.getLogger(__name__)
+
+
+def filter_series_to_15day_gap(series: list, min_gap_days: int = 15) -> list:
+    """
+    Filters a time-series list so that consecutive selected images are at least
+    `min_gap_days` apart. Uses a greedy rolling approach anchored on the date
+    field of each series item (Sentinel-2 dates are the natural anchor).
+
+    If two clear images fall within the minimum gap window, only the FIRST one
+    is kept and the clock resets from that date.  The result preserves the
+    original dict structure of every selected item.
+
+    Args:
+        series        : list of dicts, each with a 'date' / 'day' / 'year_month' key.
+        min_gap_days  : minimum number of days required between consecutive picks.
+
+    Returns:
+        Filtered list, maintaining the original dict structure.
+    """
+    if not series:
+        return series
+
+    def _parse_date(item: dict):
+        raw = item.get('date') or item.get('day') or item.get('year_month') or ''
+        try:
+            return datetime.strptime(str(raw)[:10], '%Y-%m-%d')
+        except Exception:
+            return None
+
+    # Sort chronologically; items with unparseable dates are dropped.
+    dated = [(item, _parse_date(item)) for item in series]
+    dated = [(item, d) for item, d in dated if d is not None]
+    dated.sort(key=lambda x: x[1])
+
+    selected = []
+    last_date = None
+
+    for item, item_date in dated:
+        if last_date is None or (item_date - last_date).days >= min_gap_days:
+            selected.append(item)
+            last_date = item_date
+
+    logger.info(
+        f"[15-day filter] {len(series)} series items → {len(selected)} selected "
+        f"(min gap = {min_gap_days} days)"
+    )
+    return selected
+
+
+def extract_s2_dates_from_series(series: list) -> list:
+    """
+    Pulls out the date strings (YYYY-MM-DD) from a filtered series list.
+    Only dates that are parseable as YYYY-MM-DD are included.
+    Used to pass the selected Sentinel-2 anchor dates to the deep-stats endpoint.
+    """
+    dates = []
+    for item in series:
+        raw = item.get('date') or item.get('day') or item.get('year_month') or ''
+        date_str = str(raw)[:10]
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+            dates.append(date_str)
+        except Exception:
+            logger.debug(f"Could not parse date: {raw!r}")
+            pass
+    logger.info(f"Extracted {len(dates)} S2 dates from {len(series)} series items")    
+    return dates
 
 # Professional branding constants
 FOOTER_TEXT = "MapZest | Powered by TerrAqua UAV Solutions"
@@ -533,11 +600,10 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
         traceback.print_exc()
         return None, None
 
-
 def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter, 
                                    backend_url="http://localhost:6000", 
                                    zoom=15, final_size=2400, draw_aoi_outline=False,
-                                   force_sentinel2=False):
+                                   force_sentinel2=False, selected_dates=None):
     """
     Create a HIGH-QUALITY VRA (Variable Rate Application) tile mosaic with Jenks classification.
     Uses /get_vra_map endpoint for 5-zone classified maps.
@@ -553,6 +619,8 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
         zoom: Initial zoom level
         final_size: Target image size
         draw_aoi_outline: Whether to draw AOI boundary
+        force_sentinel2: Force Sentinel-2 usage
+        selected_dates: List of specific date strings to use for the composite
         
     Returns:
         tuple: (image_buffer, vra_data) where vra_data contains breaks, stats, zoneCounts
@@ -565,23 +633,27 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
         scale = 30 if parameter == 'lst' else 10
         
         # Get VRA tile URL template from backend
+        payload = {
+            'aoi': aoi,
+            'parameter': parameter,
+            'start_date': start_date,
+            'end_date': end_date,
+            'scale': scale,
+            'force_sentinel2': force_sentinel2
+        }
+        if selected_dates:
+            payload['selected_dates'] = selected_dates
+            
         response = requests.post(
             f"{backend_url}/get_vra_map",
-            json={
-                'aoi': aoi,
-                'parameter': parameter,
-                'start_date': start_date,
-                'end_date': end_date,
-                'scale': scale,
-                'force_sentinel2': force_sentinel2,
-            },
-            timeout=90
+            json=payload,
+            timeout=420
         )
         
         if response.status_code != 200:
             logger.warning(f"Failed to get VRA map for {parameter}: {response.text}")
             return None, None
-        
+            
         data = response.json()
         tile_url_template = data.get('urlFormat')
         vra_data = {
@@ -679,7 +751,7 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
                     if '{s}' in tile_url:
                         tile_url = tile_url.replace('{s}', 'a')
                     
-                    tile_response = requests.get(tile_url, timeout=15)
+                    tile_response = requests.get(tile_url, timeout=60)
                     
                     if tile_response.status_code == 200:
                         tile_img = PILImage.open(BytesIO(tile_response.content)).convert('RGBA')
@@ -3176,7 +3248,7 @@ def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_d
     Generates an expert agricultural summary using either Claude or Gemini API based on environment variables.
     """
     
-    if not deep_stats or 'error' in deep_stats or not deep_stats.get('basic_stats'):
+    if not deep_stats or deep_stats.get('error') or deep_stats.get('basic_stats') is None:
         return f"<b>Field Intelligence Summary ({start_date} to {end_date})</b><br/>Adequate satellite data was not available to compute deep spatial statistics for this period."
 
     s = deep_stats.get('basic_stats', {})
@@ -3184,6 +3256,7 @@ def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_d
     r = deep_stats.get('regressions', {})
     z = deep_stats.get('spatial_zones', {}) or {}
     application_date = deep_stats.get('application_date', None)
+    temporal_stats = deep_stats.get('temporal_stats', [])  # Per-image 15-day stats
 
     def g(key, decimals=4):
         val = s.get(key)
@@ -3227,6 +3300,22 @@ def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_d
     p_struct = pct('structural_growth_only')
     p_low    = pct('no_response')
 
+    # Build temporal trend text from per-image 15-day stats
+    temporal_trend_text = ""
+    if temporal_stats:
+        lines = []
+        for ts in temporal_stats:
+            date = ts.get('date', 'N/A')
+            st   = ts.get('stats', {})
+            ch   = st.get('CropHealth_mean')
+            lai  = st.get('LAI_mean')
+            cl   = st.get('CIre_mean')
+            ch_s = f"{ch:.3f}" if ch is not None else 'N/A'
+            lai_s = f"{lai:.2f}" if lai is not None else 'N/A'
+            cl_s  = f"{cl:.3f}" if cl is not None else 'N/A'
+            lines.append(f"  {date}: CropHealth={ch_s}, LeafArea={lai_s}, Greenness={cl_s}")
+        temporal_trend_text = "\n".join(lines)
+
     # Build a simple, non‑technical HTML summary prompt
     ai_prompt = f"""
 You are an agronomy advisor. Write in very simple, farmer‑friendly language.
@@ -3245,13 +3334,19 @@ SUMMARY NUMBERS (FOR YOUR REFERENCE ONLY, DO NOT REPEAT AS RAW STATS):
 - Share of area with early greenness but leaf growth still catching up: {p_early}% of the field
 - Share of area with more leaf growth but weaker greenness response: {p_struct}% of the field
 - Share of area with weak or no visible response yet: {p_low}% of the field
-
+{f'''
+TEMPORAL EVOLUTION (one observation every ~15 days — use this to describe how the crop changed over time):
+{temporal_trend_text}
+Higher CropHealth = better overall condition. Higher LeafArea = more canopy growth. Higher Greenness = stronger chlorophyll.
+''' if temporal_trend_text else ''}
 Please write a 5–7 sentence continuous summary that:
 1) Explains in plain words how well the field has responded to fertilizer overall.
 2) Describes how much of the field is doing very well, doing okay, and still weak, using percentages of area (for example "around one‑third of the field").
-3) Clearly points out if the response is uniform or patchy across the field.
-4) Ends with one or two direct, practical suggestions for the farmer (for example where to watch more closely or where extra care may be needed).
+3) If temporal data is available, describes how the crop condition changed over time (e.g. improved after a certain date, dipped, peaked).
+4) Clearly points out if the response is uniform or patchy across the field.
+5) Ends with one or two direct, practical suggestions for the farmer.
 """
+
     if language == "hi":
         ai_prompt += "\nIMPORTANT: You must write your ENTIRE final response strictly in the Hindi language. Translate all information to Hindi."
 
@@ -3469,6 +3564,16 @@ def generate_report_response(payload: dict):
     end_date        = payload.get("end_date", "")
     metrics         = payload.get("metrics") or {}
     series          = payload.get("series") or []
+
+    # ── 15-day gap filtering ───────────────────────────────────────────────
+    # Apply rolling minimum-gap filter so that consecutive images used in the
+    # report are at least 15 days apart (greedy, Sentinel-2 anchored).
+    series = filter_series_to_15day_gap(series, min_gap_days=15)
+    # Extract the selected dates to pass to the deep-stats endpoint so it can
+    # build its composite and per-image stats from the same set of images.
+    selected_s2_dates = extract_s2_dates_from_series(series)
+    logger.info(f"Selected S2 dates for report ({len(selected_s2_dates)}): {selected_s2_dates}")
+    # ──────────────────────────────────────────────────────────────────────
     backend_url     = payload.get("backend_url") or os.environ.get("BACKEND_URL") or "http://localhost:6000"
     logo_path       = get_logo_path(payload.get("logo_path"))
 
@@ -3646,10 +3751,18 @@ def generate_report_response(payload: dict):
     if aoi:
         try:
             resp = requests.post(f"{backend_url}/get_deep_spatial_stats", json={
-                'aoi': aoi, 'start_date': start_date, 'end_date': end_date, 'scale': 10
-            }, timeout=45)
+                'aoi': aoi,
+                'start_date': start_date,
+                'end_date': end_date,
+                'scale': 10,
+                'selected_dates': selected_s2_dates,   # 15-day-gap selected images
+            }, timeout=180)
             if resp.status_code == 200:
                 deep_stats = resp.json()
+                logger.info(f"Deep stats keys: {list(deep_stats.keys())}")
+                logger.info(f"basic_stats: {deep_stats.get('basic_stats')}")
+            else:
+                logger.error(f"Deep stats endpoint returned {resp.status_code}: {resp.text[:300]}")
         except Exception as e:
             logger.warning(f"Failed to fetch deep stats: {e}")
 
@@ -3800,6 +3913,33 @@ def generate_report_response(payload: dict):
     col_chart_w = W * 0.50
     cell_h_max = 63 * mm
 
+    import concurrent.futures
+
+    def _fetch_vra(args):
+        param, label, s2_force = args
+        try:
+            result = create_high_quality_vra_mosaic(
+                aoi, start_date, end_date, param,
+                backend_url=backend_url, final_size=1200,
+                force_sentinel2=s2_force
+            )
+            return param, result
+        except Exception as e:
+            logger.warning(f"Parallel VRA fetch failed for {param}: {e}")
+            return param, None
+
+    # Fetch all 4 VRA maps in PARALLEL to avoid sequential blocking
+    vra_results_map = {}
+    if aoi:
+        logger.info("⚡ Launching parallel VRA map fetches...")
+        fetch_args = [(param, label, s2_force) for (param, label, chart_key, color, s2_force) in MAP_PARAMS]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(_fetch_vra, arg): arg[0] for arg in fetch_args}
+            for future in concurrent.futures.as_completed(futures):
+                param_key, vra_res = future.result()
+                vra_results_map[param_key] = vra_res
+        logger.info("✅ All parallel VRA fetches complete.")
+
     for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
         # 1. Map Image
         map_u_str = lang_strings.get("map_unavailable", "Map unavailable")
@@ -3807,9 +3947,7 @@ def generate_report_response(payload: dict):
         map_img_flowable = Paragraph(_no_map_msg, ParagraphStyle("NoMap", fontSize=8, alignment=1, textColor=colors.grey))
         if aoi:
             try:
-                vra_result = create_high_quality_vra_mosaic(
-                    aoi, start_date, end_date, param, backend_url=backend_url, final_size=1200, force_sentinel2=s2_force
-                )
+                vra_result = vra_results_map.get(param)
                 tile_buf = vra_result[0] if vra_result and len(vra_result) >= 3 else None
                 vra_data = vra_result[1] if vra_result and len(vra_result) >= 3 else None
                 zoom = vra_result[2] if vra_result and len(vra_result) >= 3 else 15
@@ -3841,6 +3979,7 @@ def generate_report_response(payload: dict):
                         ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
                                        textColor=colors.HexColor("#555555"), leading=11,
                                        wordSelectMethod='shaping' if is_hi else 'default'))
+
 
 
         # 2. Chart Image

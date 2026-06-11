@@ -86,6 +86,7 @@ if not root_logger.handlers:
     root_logger.addHandler(handler)
 root_logger.setLevel(logging.DEBUG)
 
+
 app.config['DEBUG'] = True
 
 logger = logging.getLogger('smart_irrigation_logger')
@@ -1413,7 +1414,7 @@ def classify_with_jenks(image, band_name, aoi, n_classes=5, scale=30):
         # Using a moderate sample size to balance performance and accuracy
         sample = image.select(band_name).sample(
             region=aoi,
-            scale=scale,  # Dynamic scale for 10m or 30m resolution
+            scale=ee.Number(scale).max(30),  # Increase scale to max 30m for speed
             numPixels=2000, # Reduced slightly for speed, usually sufficient for distribution
             seed=42
         )
@@ -1565,6 +1566,7 @@ def get_deep_spatial_stats():
         end_date = ee.Date(data.get('end_date'))
         scale = data.get('scale', 20)
         application_date = data.get('application_date')
+        selected_dates = data.get('selected_dates', [])  # list of 'YYYY-MM-DD' strings
 
         s2_col = sentinel2.get_s2_collection(aoi, start_date, end_date)
         if s2_col.size().getInfo() == 0:
@@ -1574,7 +1576,65 @@ def get_deep_spatial_stats():
         ndvi_min_img = ee.Image.constant(n_min)
         ndvi_max_img = ee.Image.constant(n_max)
 
-        median_img = s2_col.median().set('selected_date', 'Composite')
+        # ── Step 1 & 2: Filter collection and compute per-image stats (Fast EE Map) ──
+        s2_col_for_composite = s2_col
+        temporal_stats = []
+        if selected_dates:
+            try:
+                date_filters = [
+                    ee.Filter.date(
+                        ee.Date(d).advance(-1, 'day'),
+                        ee.Date(d).advance(2, 'day')
+                    )
+                    for d in selected_dates
+                ]
+                combined_filter = date_filters[0]
+                for f in date_filters[1:]:
+                    combined_filter = ee.Filter.Or(combined_filter, f)
+                filtered = s2_col.filter(combined_filter)
+                filtered_size = filtered.size().getInfo()
+                logger.info(f"Filtered composite uses {filtered_size} images from selected dates.")
+                
+                if filtered_size > 0:
+                    s2_col_for_composite = filtered
+                    
+                    # Compute per-image temporal stats entirely on the server
+                    def extract_stats(img):
+                        img = ee.Image(img)
+                        proc = sentinel2.process_s2_image(img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
+                        pca = pca_processor.get_pca_image(proc)
+                        b_ch = pca.select(['PC1'], ['CropHealth']).toFloat()
+                        b_lai = proc.select(['LAI']).toFloat()
+                        b_cl = proc.select(['CLRe'], ['CIre']).toFloat()
+                        stk = ee.Image.cat([b_ch, b_lai, b_cl])
+                        
+                        stats = stk.reduceRegion(
+                            reducer=(
+                                ee.Reducer.mean()
+                                .combine(ee.Reducer.stdDev(), sharedInputs=True)
+                                .combine(ee.Reducer.percentile([25, 75]), sharedInputs=True)
+                            ),
+                            # Use at least 20m scale for temporal tracking to prevent Earth Engine timeout
+                            geometry=aoi, scale=ee.Number(scale).max(20), bestEffort=True, maxPixels=1e9
+                        )
+                        # Retain the date string
+                        return ee.Feature(None, stats).set('date', img.get('selected_date'))
+                    
+                    logger.info("Running fast server-side temporal stats map...")
+                    stats_features = s2_col_for_composite.map(extract_stats).getInfo()
+                    
+                    for feat in stats_features.get('features', []):
+                        props = feat.get('properties', {})
+                        date_str = props.pop('date', 'Unknown')
+                        temporal_stats.append({'date': date_str, 'stats': props})
+                    logger.info("Server-side temporal stats complete.")
+                    
+                else:
+                    logger.warning("Selected-date filter returned 0 images - using full range.")
+            except Exception as e:
+                logger.warning(f"Date filtering or temporal mapping failed ({e}) - using full range.")
+
+        median_img = s2_col_for_composite.median().set('selected_date', 'Composite')
         processed = sentinel2.process_s2_image(median_img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
 
         pca_result = pca_processor.get_pca_image(processed)
@@ -1584,58 +1644,63 @@ def get_deep_spatial_stats():
 
         stacked_image = ee.Image.cat([band_pca, band_lai, band_clre])
 
-        basic = stacked_image.reduceRegion(
-            reducer=ee.Reducer.mean()
-                .combine(ee.Reducer.stdDev(),    sharedInputs=True)
-                .combine(ee.Reducer.min(),        sharedInputs=True)
-                .combine(ee.Reducer.max(),        sharedInputs=True)
-                .combine(ee.Reducer.median(),     sharedInputs=True)
-                .combine(ee.Reducer.variance(),   sharedInputs=True)
-                .combine(ee.Reducer.skew(),       sharedInputs=True)
-                .combine(ee.Reducer.kurtosis(),   sharedInputs=True)
-                .combine(ee.Reducer.percentile([5,10,25,75,90,95]), sharedInputs=True),
-            geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
+        safe_scale = ee.Number(scale).max(20)
+        
+        # Batch all reducers into a single EE Dictionary to do exactly ONE .getInfo() call
+        ee_dict = ee.Dictionary({
+            'basic': stacked_image.reduceRegion(
+                reducer=ee.Reducer.mean()
+                    .combine(ee.Reducer.stdDev(),    sharedInputs=True)
+                    .combine(ee.Reducer.min(),        sharedInputs=True)
+                    .combine(ee.Reducer.max(),        sharedInputs=True)
+                    .combine(ee.Reducer.median(),     sharedInputs=True)
+                    .combine(ee.Reducer.variance(),   sharedInputs=True)
+                    .combine(ee.Reducer.skew(),       sharedInputs=True)
+                    .combine(ee.Reducer.kurtosis(),   sharedInputs=True)
+                    .combine(ee.Reducer.percentile([5,10,25,75,90,95]), sharedInputs=True),
+                geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'corr_AB': stacked_image.select(['CropHealth','LAI']).reduceRegion(
+                reducer=ee.Reducer.pearsonsCorrelation(), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'corr_AC': stacked_image.select(['CropHealth','CIre']).reduceRegion(
+                reducer=ee.Reducer.pearsonsCorrelation(), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'corr_BC': stacked_image.select(['LAI','CIre']).reduceRegion(
+                reducer=ee.Reducer.pearsonsCorrelation(), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'covar': stacked_image.toArray().reduceRegion(
+                reducer=ee.Reducer.centeredCovariance(), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'reg_health_from_cire': stacked_image.select(['CIre','CropHealth']).reduceRegion(
+                reducer=ee.Reducer.linearRegression(numX=1, numY=1), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'reg_health_from_lai': stacked_image.select(['LAI','CropHealth']).reduceRegion(
+                reducer=ee.Reducer.linearRegression(numX=1, numY=1), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            ),
+            'reg_health_from_both': stacked_image.select(['CIre','LAI','CropHealth']).reduceRegion(
+                reducer=ee.Reducer.linearRegression(numX=2, numY=1), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
+            )
+        })
+        
+        # Execute the single massive HTTP request
+        results = ee_dict.getInfo()
+        
+        basic = results.get('basic', {})
+        corr_AB = results.get('corr_AB', {})
+        corr_AC = results.get('corr_AC', {})
+        corr_BC = results.get('corr_BC', {})
+        covar_result = results.get('covar', {})
+        reg_health_from_cire = results.get('reg_health_from_cire', {})
+        reg_health_from_lai = results.get('reg_health_from_lai', {})
+        reg_health_from_both = results.get('reg_health_from_both', {})
 
-        corr_AB = stacked_image.select(['CropHealth','LAI']).reduceRegion(
-            reducer=ee.Reducer.pearsonsCorrelation(), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-        
-        corr_AC = stacked_image.select(['CropHealth','CIre']).reduceRegion(
-            reducer=ee.Reducer.pearsonsCorrelation(), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-        
-        corr_BC = stacked_image.select(['LAI','CIre']).reduceRegion(
-            reducer=ee.Reducer.pearsonsCorrelation(), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-
-        covar_result = stacked_image.toArray().reduceRegion(
-            reducer=ee.Reducer.centeredCovariance(), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-
-        reg_health_from_cire = stacked_image.select(['CIre','CropHealth']).reduceRegion(
-            reducer=ee.Reducer.linearRegression(numX=1, numY=1), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-        
-        reg_health_from_lai = stacked_image.select(['LAI','CropHealth']).reduceRegion(
-            reducer=ee.Reducer.linearRegression(numX=1, numY=1), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-        
-        reg_health_from_both = stacked_image.select(['CIre','LAI','CropHealth']).reduceRegion(
-            reducer=ee.Reducer.linearRegression(numX=2, numY=1), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-        ).getInfo()
-
-        def get_minmax(band):
-            s = stacked_image.select([band]).reduceRegion(
-                reducer=ee.Reducer.minMax(), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
-            ).getInfo()
-            if not s or f'{band}_min' not in s:
-                return 0.0, 1.0
-            return float(s.get(f'{band}_min')), float(s.get(f'{band}_max'))
-        
-        ch_min, ch_max = get_minmax('CropHealth')
-        lai_min, lai_max = get_minmax('LAI')
-        cire_min, cire_max = get_minmax('CIre')
+        ch_min = float(basic.get('CropHealth_min', 0.0))
+        ch_max = float(basic.get('CropHealth_max', 1.0))
+        lai_min = float(basic.get('LAI_min', 0.0))
+        lai_max = float(basic.get('LAI_max', 1.0))
+        cire_min = float(basic.get('CIre_min', 0.0))
+        cire_max = float(basic.get('CIre_max', 1.0))
         
         def safe_div(mn, mx):
             diff = mx - mn
@@ -1656,11 +1721,14 @@ def get_deep_spatial_stats():
             zone_structural_only.rename('structural_growth_only'),
             zone_all_low.rename('no_response')
         ]).reduceRegion(
-            reducer=ee.Reducer.sum(), geometry=aoi, scale=scale, bestEffort=True, maxPixels=1e9
+            reducer=ee.Reducer.sum(), geometry=aoi, scale=safe_scale, bestEffort=True, maxPixels=1e9
         ).getInfo()
+
+        logger.info(f"Deep stats complete. Temporal images: {len(temporal_stats)}.")
 
         return jsonify({
             'basic_stats': basic,
+            'temporal_stats': temporal_stats,            # NEW: per-image 15-day stats
             'correlations': {
                 'CropHealth_vs_LAI':  corr_AB or {},
                 'CropHealth_vs_CIre': corr_AC or {},
@@ -1742,19 +1810,13 @@ def get_vra_map():
         # =========================================================
         
         # 1. Get NDVI Range (needed for CWSI) - calculated from composite of period
-        l_col_raw = landsat.get_landsat_collection(aoi, start_date, end_date)
         s2_col_raw = sentinel2.get_s2_collection(aoi, start_date, end_date)
         
         def get_ndvi(img):
-            bands = img.bandNames()
-            return ee.Algorithms.If(
-                bands.contains('SR_B5'),
-                img.normalizedDifference(['SR_B5', 'SR_B4']).rename('NDVI'),
-                img.normalizedDifference(['B8', 'B4']).rename('NDVI')
-            )
+            return img.normalizedDifference(['B8', 'B4']).rename('NDVI')
         
         # Combine cols for threshold stats
-        combined_ndvi = l_col_raw.merge(s2_col_raw).map(lambda img: ee.Image(get_ndvi(img)))
+        combined_ndvi = s2_col_raw.map(lambda img: ee.Image(get_ndvi(img)))
         
         # Handle case with no data for thresholds
         try:
@@ -1769,75 +1831,34 @@ def get_vra_map():
         
         if not is_composite:
             # SPECIFIC DATE LOGIC
-            l8_col = landsat.get_landsat_collection(aoi, start_date, end_date)
             s2_col = sentinel2.get_s2_collection(aoi, start_date, end_date)
             
-            # STRICT LOGIC: CWSI and LST require thermal bands -> MUST use Landsat
             if parameter in ['lst', 'cwsi']:
-                if l8_col.size().getInfo() > 0:
-                    l8_img = l8_col.first()
-                    processed_img = landsat.process_landsat_image(l8_img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
-                else:
-                    return jsonify({'error': f'No Landsat thermal data available for {parameter.upper()} on this date'}), 404
+                return jsonify({'error': f'Landsat thermal data is disabled. Cannot compute {parameter.upper()}'}), 404
             else:
-                # For everything else (NDVI, LAI, etc), prefer Landsat if it's the only one available, otherwise Sentinel-2
-                # EXCEPTION: chlorophyll (CLRe) requires S2 red-edge bands — force S2 always
                 count_s2 = s2_col.size().getInfo()
-                count_l8 = l8_col.size().getInfo()
                 
-                if parameter == 'chlorophyll' or force_sentinel2:
-                    # CLRe needs Sentinel-2 B5/B7 red-edge bands — Landsat does NOT have them.
-                    # Even if force_sentinel2 is set, we CANNOT fall back to Landsat for chlorophyll.
-                    if count_s2 > 0:
-                        s2_img = s2_col.first()
-                        processed_img = sentinel2.process_s2_image(s2_img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
-                    else:
-                        # No Sentinel-2 data at all — cannot compute CLRe from Landsat
-                        return jsonify({'error': 'Chlorophyll (CLRe) requires Sentinel-2 red-edge bands (B5/B7). No Sentinel-2 data found for this date. Try a wider date range.'}), 404
-                elif count_s2 == 0 and count_l8 > 0:
-                    l8_img = l8_col.first()
-                    processed_img = landsat.process_landsat_image(l8_img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
-                elif count_s2 > 0:
+                if count_s2 > 0:
                     s2_img = s2_col.first()
                     processed_img = sentinel2.process_s2_image(s2_img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
                 else:
-                    return jsonify({'error': 'No satellite data available for this date'}), 404
+                    return jsonify({'error': 'No Sentinel-2 data available for this date'}), 404
         else:
             # COMPOSITE LOGIC (MEDIAN)
-            l8_col = landsat.get_landsat_collection(aoi, start_date, end_date)
             s2_col = sentinel2.get_s2_collection(aoi, start_date, end_date)
             
             if parameter in ['lst', 'cwsi']:
-                if l8_col.size().getInfo() > 0:
-                    def proc_l8(img): return landsat.process_landsat_image(img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
-                    processed_img = l8_col.map(proc_l8).median()
-                else:
-                    return jsonify({'error': f'No Landsat thermal data available for {parameter.upper()} in this period'}), 404
+                return jsonify({'error': f'Landsat thermal data is disabled. Cannot compute {parameter.upper()}'}), 404
             else:
                 count_s2 = s2_col.size().getInfo()
-                count_l8 = l8_col.size().getInfo()
                 
-                if parameter == 'chlorophyll' or force_sentinel2:
-                    # CLRe needs S2 B5/B7 red-edge bands — Landsat does NOT have them.
-                    # Even if force_sentinel2 is set, we CANNOT fall back to Landsat for chlorophyll.
-                    if count_s2 > 0:
-                        processed_img = sentinel2.process_s2_image(
-                            s2_col.median().set('selected_date', 'Composite'),
-                            aoi, ndvi_min_img, ndvi_max_img, mask_agri=False
-                        )
-                    else:
-                        # No Sentinel-2 data in this period — cannot compute CLRe from Landsat
-                        return jsonify({'error': 'Chlorophyll (CLRe) requires Sentinel-2 red-edge bands (B5/B7). No Sentinel-2 data found in this period. Try a wider date range.'}), 404
-                elif count_s2 == 0 and count_l8 > 0:
-                    def proc_l8(img): return landsat.process_landsat_image(img, aoi, ndvi_min_img, ndvi_max_img, mask_agri=False)
-                    processed_img = l8_col.map(proc_l8).median()
-                elif count_s2 > 0:
+                if count_s2 > 0:
                     processed_img = sentinel2.process_s2_image(
                         s2_col.median().set('selected_date', 'Composite'),
                         aoi, ndvi_min_img, ndvi_max_img, mask_agri=False
                     )
                 else:
-                    return jsonify({'error': 'No satellite data available for this period. Try a larger date range.'}), 404
+                    return jsonify({'error': 'No Sentinel-2 data available for this period. Try a larger date range.'}), 404
 
         # =========================================================
         # PARAMETER EXTRACTION

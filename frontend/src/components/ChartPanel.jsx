@@ -191,15 +191,18 @@ function ChartPanel({ mode = 'overlay' }) {
 
         // Create datasets with min/max bands (20% above/below for better visibility)
         const meanValues = pairedPoints.map(p => ({
+            x: p.date,
             y: isNormalized ? (range === 0 ? 0.5 : (p.value - globalMin) / range) : p.value,
             rawY: p.value,
             originalDate: p.date
         }));
         const minValues = pairedPoints.map(p => ({
+            x: p.date,
             y: isNormalized ? (range === 0 ? 0.5 * 0.7 : ((p.value * 0.7) - globalMin) / range) : p.value * 0.7,
             rawY: p.value * 0.7
         }));
         const maxValues = pairedPoints.map(p => ({
+            x: p.date,
             y: isNormalized ? (range === 0 ? 0.5 * 1.3 : ((p.value * 1.3) - globalMin) / range) : p.value * 1.3,
             rawY: p.value * 1.3
         }));

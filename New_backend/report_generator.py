@@ -3211,7 +3211,7 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
     from datetime import datetime as _dt
     import numpy as np
 
-    fig, ax = plt.subplots(figsize=(5.0, 2.3), dpi=140)
+    fig, ax = plt.subplots(figsize=(5.0, 1.8), dpi=130)
     ax.set_facecolor('#FAFAFA')
     fig.patch.set_facecolor('white')
 
@@ -3911,7 +3911,7 @@ def generate_report_response(payload: dict):
     # Original layout: balanced map & chart so content fits on two pages
     col_map_w = W * 0.50
     col_chart_w = W * 0.50
-    cell_h_max = 63 * mm
+    cell_h_max = 42 * mm
 
     import concurrent.futures
 

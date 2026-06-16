@@ -3211,7 +3211,7 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
     from datetime import datetime as _dt
     import numpy as np
 
-    fig, ax = plt.subplots(figsize=(5.0, 1.8), dpi=130)
+    fig, ax = plt.subplots(figsize=(7.0, 4.2), dpi=140)
     ax.set_facecolor('#FAFAFA')
     fig.patch.set_facecolor('white')
 
@@ -3238,10 +3238,11 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
         # ax.set_ylabel('Index Value', fontsize=8)
         ax.grid(True, alpha=0.3, linewidth=0.8)
 
-    ax.set_title(title + ' Trend', fontsize=9, fontweight='bold', pad=6)
+    ax.set_title(title + ' Trend', fontsize=20, fontweight='bold', pad=6)
     plt.tight_layout(pad=0.8)
     fig.savefig(outbuf, format='png', bbox_inches='tight', dpi=140)
     plt.close(fig)
+
 
 def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_date: str, crop_name: str, aoi_name: str = "Field", language: str = "en") -> str:
     """
@@ -3908,21 +3909,11 @@ def generate_report_response(payload: dict):
     story.append(Spacer(1, 4))
 
     # ══════════════════════════════════════════════════════════════════
-    # Side-by-Side Map & Chart Layout (Auto-paginating)
+    # Parameter Analysis Setup & Layout
     # ══════════════════════════════════════════════════════════════════
-    story.append(PageBreak())  # Force page 2 start
-
-    story.append(Paragraph(
-        "Detailed Parameter Analysis",
-        ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=12,
-                    textColor=colors.HexColor("#2E7D32"), spaceAfter=4, alignment=1)
-    ))
-
-    # ── Strict 2-column layout: map LEFT, chart RIGHT, 4 rows fixed height ──
-    # A4 usable height ~257mm, minus header/footer ~20mm, minus title ~10mm = ~227mm
-    # 4 rows → each row gets ~56mm
-    ROW_H = 56 * mm          # Fixed row height — never changes
-    col_map_w   = W * 0.48
+    ROW_H_P1   = 118 * mm  # Single row fills remaining Page 1 space (available ~124mm)
+    ROW_H_P2   = 78 * mm   # 3 rows × 78mm = 234mm, fills Page 2 (~240mm usable after title)
+    col_map_w = W * 0.48
     col_chart_w = W * 0.52
 
     MAP_PARAMS = [
@@ -3931,7 +3922,6 @@ def generate_report_response(payload: dict):
         ('lai',         'Leaf Area Index',   'lai',          '#1565C0', True),
         ('soilmoisture','Soil Moisture',     'soilmoisture', '#6A1B9A', False),
     ]
-    
 
     import concurrent.futures
 
@@ -3959,14 +3949,9 @@ def generate_report_response(payload: dict):
                 param_key, vra_res = future.result()
                 vra_results_map[param_key] = vra_res
         logger.info("✅ All parallel VRA fetches complete.")
-    
-    # Build all 4 rows as one table — ReportLab will NOT break inside it
-    table_data = []
-    row_heights = []
 
-    for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
-        # 1. Map Image
-        # ── Map cell ──────────────────────────────────────────────────────
+    def _build_param_row(idx, param, label, chart_key, color, ROW_H):
+        """Build a single parameter row: [nested_table] with fixed height."""
         map_u_str = lang_strings.get("map_unavailable", "Map unavailable")
         map_cell  = Paragraph(f"<i>{map_u_str}</i>",
                         ParagraphStyle("NoMap", fontSize=7, alignment=1, textColor=colors.grey))
@@ -3983,8 +3968,9 @@ def generate_report_response(payload: dict):
                     styled.save(sbuf, format='PNG', optimize=True)
                     sbuf.seek(0)
                     iw, ih = styled.size
-                    cell_h_max = ROW_H - 6 * mm
-                    scale = min(col_map_w / iw, cell_h_max / ih)
+                    avail_w = col_map_w - 2 * mm
+                    avail_h = ROW_H - 10 * mm   # 10mm for label row (6mm) + padding
+                    scale = min(avail_w / iw, avail_h / ih)
                     map_cell = Image(sbuf, width=iw * scale, height=ih * scale)
                 else:
                     # No map returned — build a parameter-specific informative message
@@ -4015,7 +4001,7 @@ def generate_report_response(payload: dict):
         chart_pil = PILImage.open(chart_buf)
         cw, ch = chart_pil.size
         avail_w = col_chart_w - 4 * mm
-        avail_h = ROW_H       - 8 * mm
+        avail_h = ROW_H - 12 * mm
         cscale  = min(avail_w / cw, avail_h / ch)
         chart_buf.seek(0)
         chart_cell = Image(chart_buf, width=cw * cscale, height=ch * cscale)
@@ -4037,23 +4023,60 @@ def generate_report_response(payload: dict):
             ('SPAN',          (0, 0), (1, 0)),
             ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
             ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
-            ('TOPPADDING',    (0, 0), (-1, -1), 1),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
-            ('LINEBELOW',     (0, 1), (-1, 1), 0.3,
-             colors.HexColor("#C8E6C9") if idx < len(MAP_PARAMS)-1 else colors.white),
+            ('TOPPADDING',    (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
         ]))
+        return inner
 
-        table_data.append([inner])
-        row_heights.append(ROW_H)
+    # ══════════════════════════════════════════════════════════════════════
+    # PAGE 1 TAIL — "Detailed Parameter Analysis" title + first param row
+    # ══════════════════════════════════════════════════════════════════════
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        "Detailed Parameter Analysis",
+        ParagraphStyle("P1ParamTitle", fontName="Helvetica-Bold", fontSize=11,
+                       textColor=colors.HexColor("#2E7D32"), spaceAfter=3, alignment=1)
+    ))
 
-    # Single outer table — all 4 rows, strict fixed heights, no page break splitting
+    # Build first parameter row (Crop Health) with Page-1 row height
+    first_row = _build_param_row(0, *MAP_PARAMS[0][:4], ROW_H_P1)
+    p1_table = Table([[first_row]], colWidths=[W], rowHeights=[ROW_H_P1])
+    p1_table.setStyle(TableStyle([
+        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING',    (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('LEFTPADDING',   (0,0), (-1,-1), 0),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+    ]))
+    story.append(p1_table)
+
+    # ══════════════════════════════════════════════════════════════════════
+    # PAGE 2 — Remaining 3 parameter rows
+    # ══════════════════════════════════════════════════════════════════════
+    story.append(PageBreak())
+
+    # story.append(Paragraph(
+    #     "Detailed Parameter Analysis (continued)",
+    #     ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=12,
+    #                    textColor=colors.HexColor("#2E7D32"), spaceAfter=4, alignment=1)
+    # ))
+
+    remaining_params = MAP_PARAMS[1:]
+    table_data  = []
+    row_heights = []
+    for idx, (param, label, chart_key, color, s2_force) in enumerate(remaining_params, start=1):
+        row = _build_param_row(idx, param, label, chart_key, color, ROW_H_P2)
+        table_data.append([row])
+        row_heights.append(ROW_H_P2)
+
     outer = Table(table_data, colWidths=[W], rowHeights=row_heights)
     outer.setStyle(TableStyle([
-        ('VALIGN',     (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 0),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-        ('LEFTPADDING',  (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING',    (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('LEFTPADDING',   (0,0), (-1,-1), 0),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+        ('LINEBELOW', (0,0), (-1, len(remaining_params)-2), 0.5, colors.HexColor("#C8E6C9")),
     ]))
     story.append(outer)
 

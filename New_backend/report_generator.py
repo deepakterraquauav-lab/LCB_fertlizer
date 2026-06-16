@@ -3238,11 +3238,12 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
         # ax.set_ylabel('Index Value', fontsize=8)
         ax.grid(True, alpha=0.3, linewidth=0.8)
 
-    ax.set_title(title + ' Trend', fontsize=20, fontweight='bold', pad=6)
+    ax.set_title(title + ' Trend', fontsize=18, fontweight='bold', pad=6)
     plt.tight_layout(pad=0.8)
     fig.savefig(outbuf, format='png', bbox_inches='tight', dpi=140)
     plt.close(fig)
 
+  
 
 def generate_field_intelligence_summary(deep_stats: dict, start_date: str, end_date: str, crop_name: str, aoi_name: str = "Field", language: str = "en") -> str:
     """

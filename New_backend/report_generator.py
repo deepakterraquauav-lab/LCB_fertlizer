@@ -3583,9 +3583,10 @@ def generate_report_response(payload: dict):
         pagesize=A4,
         rightMargin=12 * mm,
         leftMargin=12 * mm,
-        topMargin=10 * mm,
+        topMargin=8 * mm,
         bottomMargin=10 * mm,
     )
+
 
     pdf_font_name = "Helvetica"
     pdf_font_bold = "Helvetica-Bold"
@@ -3770,37 +3771,50 @@ def generate_report_response(payload: dict):
     has_deep_stats = bool(deep_stats) and not deep_stats.get('error') and bool(deep_stats.get('basic_stats'))
 
     ai_summary = generate_field_intelligence_summary(deep_stats, start_date, end_date, crop_name, location_text or "Field", language)
-    for block in ai_summary.split("\n\n"):
-        story.append(Paragraph(sanitize_html_for_reportlab(block), normal))
-    story.append(Spacer(1, 2 if is_hi else 4))
+    ai_blocks = [b for b in ai_summary.split("\n\n") if b.strip()][:10]
+    ai_paragraphs = [Paragraph(sanitize_html_for_reportlab(b), normal) for b in ai_blocks]
 
-    # Only show the 0–10 health scale if deep spatial stats (and thus a score) were available
+    # ── Build AOI map buffer ──────────────────────────────────────────────
+    map_col_content = Paragraph("<i>Field map not available</i>", caption)
+    if aoi:
+        try:
+            map_buf = create_perfect_context_map(aoi, zoom=18, padding=150)
+            if map_buf:
+                pil_shot = PILImage.open(map_buf)
+                iw, ih = pil_shot.size
+                MAP_COL_W = W * 0.40           # 40% of page width for map column
+                TEXT_COL_W = W * 0.57          # 57% for text column (3% gutter)
+                max_map_h = 90 * mm            # generous vertical budget
+                mscale = min(MAP_COL_W / iw, max_map_h / ih)
+                map_buf.seek(0)
+                map_col_content = Image(map_buf, width=iw * mscale, height=ih * mscale)
+        except Exception as e:
+            logger.warning(f"AOI map failed: {e}")
+    else:
+        MAP_COL_W  = W * 0.40
+        TEXT_COL_W = W * 0.57
+
+    MAP_COL_W  = W * 0.40
+    TEXT_COL_W = W * 0.57
+
+    # ── Health scale widget (compact, fits in text column) ────────────────
+    health_scale_rows = None
     if has_deep_stats:
-        # Simple 0–10 health legend bar just after AI summary
-        legend_title_text = lang_strings.get("health_scale_title", "<b>Overall Crop Health Scale (0–10)</b>")
-        legend_title = Paragraph(legend_title_text, normal)
-        story.append(legend_title)
+        weak_color     = colors.HexColor("#FFCDD2")
+        moderate_color = colors.HexColor("#FFF9C4")
+        strong_color   = colors.HexColor("#C8E6C9")
+        weak_high      = colors.HexColor("#EF9A9A")
+        moderate_high  = colors.HexColor("#FFF59D")
+        strong_high    = colors.HexColor("#A5D6A7")
 
-        # Three sections: 0–3 (Weak), 4–7 (Moderate), 8–10 (Strong)
-        weak_color = colors.HexColor("#FFCDD2")      # light red
-        moderate_color = colors.HexColor("#FFF9C4")  # light yellow
-        strong_color = colors.HexColor("#C8E6C9")    # light green
-        # Darker highlight colors for the active band
-        weak_high   = colors.HexColor("#EF9A9A")
-        moderate_high = colors.HexColor("#FFF59D")
-        strong_high = colors.HexColor("#A5D6A7")
-
-        # First row: three bands; second row: score label (filled later)
         legend_rows = [
             [
-                Paragraph(lang_strings.get("health_weak", "0 – 3<br/><i>Weak</i>"), ParagraphStyle("LegLbl", parent=normal, alignment=1)),
-                Paragraph(lang_strings.get("health_moderate", "4 – 7<br/><i>Moderate</i>"), ParagraphStyle("LegLbl", parent=normal, alignment=1)),
-                Paragraph(lang_strings.get("health_strong", "8 – 10<br/><i>Strong</i>"), ParagraphStyle("LegLbl", parent=normal, alignment=1)),
+                Paragraph(lang_strings.get("health_weak",     "0–3<br/><i>Weak</i>"),     ParagraphStyle("LL", parent=normal, alignment=1, fontSize=8)),
+                Paragraph(lang_strings.get("health_moderate", "4–7<br/><i>Moderate</i>"), ParagraphStyle("LM", parent=normal, alignment=1, fontSize=8)),
+                Paragraph(lang_strings.get("health_strong",   "8–10<br/><i>Strong</i>"),  ParagraphStyle("LH", parent=normal, alignment=1, fontSize=8)),
             ],
-            ["", "", ""],  # reserved for numeric score label under the correct band
+            ["", "", ""],
         ]
-
-        # Derive a simple 0–10 score from Crop Health mean (bounded)
         overall_score = None
         try:
             bs = deep_stats.get('basic_stats', {}) if deep_stats else {}
@@ -3808,98 +3822,108 @@ def generate_report_response(payload: dict):
             if isinstance(ch_mean, (int, float)):
                 overall_score = max(0.0, min(10.0, round(float(ch_mean) * 10.0, 1)))
         except Exception:
-            overall_score = None
+            pass
 
-        # If we have a score, decide which band and set a numeric label under it
         marker_col = None
         if overall_score is not None:
             score_int = int(round(overall_score))
-            # Quantize into bands: 0–3, 4–7, 8–10
-            if score_int <= 3:
-                marker_col = 0
-            elif score_int <= 7:
-                marker_col = 1
-            else:
-                marker_col = 2
-            legend_rows[1][marker_col] = Paragraph(str(score_int), ParagraphStyle("ScoreInt", parent=normal, alignment=1, fontSize=10))
+            marker_col = 0 if score_int <= 3 else (1 if score_int <= 7 else 2)
+            legend_rows[1][marker_col] = Paragraph(str(score_int), ParagraphStyle("SI", parent=normal, alignment=1, fontSize=10))
 
-        # Build legend table only when we have deep stats (and thus legend_rows defined)
-        legend_table = Table(
-            legend_rows,
-            colWidths=[W/3.0, W/3.0, W/3.0],
-            rowHeights=[10 * mm, 4 * mm],
-        )
-
-        # Style the legend and, if we have a score, softly highlight the band cell instead of drawing a bar
-        legend_style_cmds = [
-            ('BACKGROUND', (0, 0), (0, 0), weak_color),
-            ('BACKGROUND', (1, 0), (1, 0), moderate_color),
-            ('BACKGROUND', (2, 0), (2, 0), strong_color),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('BOX', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.grey),
+        col_w3 = TEXT_COL_W / 3.0
+        legend_table = Table(legend_rows, colWidths=[col_w3, col_w3, col_w3], rowHeights=[9*mm, 4*mm])
+        legend_cmds = [
+            ('BACKGROUND', (0,0),(0,0), weak_color),
+            ('BACKGROUND', (1,0),(1,0), moderate_color),
+            ('BACKGROUND', (2,0),(2,0), strong_color),
+            ('VALIGN',     (0,0),(-1,-1), 'MIDDLE'),
+            ('ALIGN',      (0,0),(-1,-1), 'CENTER'),
+            ('BOX',        (0,0),(-1,-1), 0.5, colors.grey),
+            ('INNERGRID',  (0,0),(-1,-1), 0.3, colors.grey),
         ]
-
         if marker_col is not None:
-            # Highlight the entire band the score falls into, and give it a slightly thicker border
-            if marker_col == 0:
-                legend_style_cmds.append(('BACKGROUND', (0, 0), (0, 0), weak_high))
-            elif marker_col == 1:
-                legend_style_cmds.append(('BACKGROUND', (1, 0), (1, 0), moderate_high))
-            else:
-                legend_style_cmds.append(('BACKGROUND', (2, 0), (2, 0), strong_high))
-            legend_style_cmds.append(('BOX', (marker_col, 0), (marker_col, 1), 1.0, colors.black))
+            hi_colors = [weak_high, moderate_high, strong_high]
+            legend_cmds.append(('BACKGROUND', (marker_col,0),(marker_col,0), hi_colors[marker_col]))
+            legend_cmds.append(('BOX', (marker_col,0),(marker_col,1), 1.0, colors.black))
+        legend_table.setStyle(TableStyle(legend_cmds))
+        health_scale_rows = legend_table
 
-        legend_table.setStyle(TableStyle(legend_style_cmds))
-        story.append(legend_table)
+    # ── Assemble text column ──────────────────────────────────────────────
+    from reportlab.platypus import KeepInFrame
 
-        story.append(Spacer(1, 2.5 if is_hi else 5))
+    scale_title_p = Paragraph(
+        lang_strings.get("health_scale_title", "Overall Crop Health Scale (0–10)"),
+        ParagraphStyle("ScTitle", fontName=pdf_font_name, fontSize=8, leading=10,
+                       textColor=colors.HexColor("#2E7D32"), spaceAfter=2)
+    ) if has_deep_stats else None
 
-    # ══════════════════════════════════════════════════════════════════
-    # AOI Map Screenshot (perfect context map generated on backend)
-    # ══════════════════════════════════════════════════════════════════
-    if aoi:
-        try:
-            map_buf = create_perfect_context_map(aoi, zoom=18, padding=150)
-            if map_buf:
-                pil_shot = PILImage.open(map_buf)
-                iw, ih = pil_shot.size
-                
-                max_w = W * 0.85
-                max_h = 75 * mm
-                
-                scale = min(max_w / iw, max_h / ih)
-                draw_w = iw * scale
-                draw_h = ih * scale
-                
-                map_buf.seek(0)
-                shot_img = Image(map_buf, width=draw_w, height=draw_h)
+    map_title_p = Paragraph(
+        lang_strings.get("aoi_map_main_title", "Area of Interest Map"),
+        ParagraphStyle("MapTitleInner", fontName=pdf_font_bold, fontSize=9,
+                       textColor=colors.HexColor("#2E7D32"), alignment=1, spaceAfter=2)
+    )
+    map_subtitle_p = Paragraph(
+        lang_strings.get("aoi_map_subtitle", "Field boundary shown on satellite imagery."),
+        ParagraphStyle("MapSubInner", fontName=pdf_font_italic, fontSize=7,
+                       textColor=colors.grey, alignment=1, spaceAfter=4)
+    )
 
-                aoi_map_title = lang_strings.get("aoi_map_main_title", "Area of Interest Map")
-                aoi_map_subtitle = lang_strings.get("aoi_map_subtitle", "<i>Geographically aligned view showing the field boundary.</i>")
-                
-                story.append(Paragraph(aoi_map_title, ParagraphStyle("AOIMapTitle", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=4 if is_hi else 8, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')))
-                story.append(Paragraph(
-                    aoi_map_subtitle,
-                    ParagraphStyle("AOICaption", fontName=pdf_font_italic, fontSize=8, textColor=colors.grey, spaceAfter=4 if is_hi else 8, alignment=1, wordSelectMethod='shaping' if is_hi else 'default')
-                ))
+    text_col_items = ai_paragraphs[:]
+    if has_deep_stats and scale_title_p:
+        text_col_items.append(Spacer(1, 3))
+        text_col_items.append(scale_title_p)
+        text_col_items.append(health_scale_rows)
+    text_col_items.append(Spacer(1, 4))
 
-                shot_table = Table([[shot_img]], colWidths=[W])
-                shot_table.setStyle(TableStyle([
-                    ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-                ]))
-                story.append(shot_table)
-                story.append(Spacer(1, 3 if is_hi else 6))
-                logger.info("Perfect context map generated and embedded in PDF.")
-        except Exception as e:
-            logger.warning(f"Could not embed perfect context map: {e}")
+    # Wrap text column in KeepInFrame so it never overflows
+    text_frame = KeepInFrame(
+        maxWidth=TEXT_COL_W,
+        maxHeight=105 * mm,
+        content=text_col_items,
+        mode='shrink',
+    )
+
+    map_frame_items = [map_title_p, map_subtitle_p, map_col_content]
+    map_frame = KeepInFrame(
+        maxWidth=MAP_COL_W,
+        maxHeight=105 * mm,
+        content=map_frame_items,
+        mode='shrink',
+    )
+
+    # ── 2-column table: [text | map] ──────────────────────────────────────
+    side_by_side = Table(
+        [[text_frame, map_frame]],
+        colWidths=[TEXT_COL_W, MAP_COL_W],
+    )
+    side_by_side.setStyle(TableStyle([
+        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING',  (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING',   (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 0),
+        ('LINEAFTER',    (0,0), (0,0), 0.5, colors.HexColor("#A5D6A7")),  # subtle divider
+    ]))
+    story.append(side_by_side)
+    story.append(Spacer(1, 4))
 
     # ══════════════════════════════════════════════════════════════════
     # Side-by-Side Map & Chart Layout (Auto-paginating)
     # ══════════════════════════════════════════════════════════════════
-    story.append(Paragraph("Detailed Parameter Analysis", ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=12, alignment=1)))
+    story.append(PageBreak())  # Force page 2 start
+
+    story.append(Paragraph(
+        "Detailed Parameter Analysis",
+        ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=12,
+                    textColor=colors.HexColor("#2E7D32"), spaceAfter=4, alignment=1)
+    ))
+
+    # ── Strict 2-column layout: map LEFT, chart RIGHT, 4 rows fixed height ──
+    # A4 usable height ~257mm, minus header/footer ~20mm, minus title ~10mm = ~227mm
+    # 4 rows → each row gets ~56mm
+    ROW_H = 56 * mm          # Fixed row height — never changes
+    col_map_w   = W * 0.48
+    col_chart_w = W * 0.52
 
     MAP_PARAMS = [
         ('pca',         'Crop Health',       'pca',          '#2E7D32', True),
@@ -3907,11 +3931,7 @@ def generate_report_response(payload: dict):
         ('lai',         'Leaf Area Index',   'lai',          '#1565C0', True),
         ('soilmoisture','Soil Moisture',     'soilmoisture', '#6A1B9A', False),
     ]
-
-    # Original layout: balanced map & chart so content fits on two pages
-    col_map_w = W * 0.50
-    col_chart_w = W * 0.50
-    cell_h_max = 42 * mm
+    
 
     import concurrent.futures
 
@@ -3939,12 +3959,17 @@ def generate_report_response(payload: dict):
                 param_key, vra_res = future.result()
                 vra_results_map[param_key] = vra_res
         logger.info("✅ All parallel VRA fetches complete.")
+    
+    # Build all 4 rows as one table — ReportLab will NOT break inside it
+    table_data = []
+    row_heights = []
 
     for idx, (param, label, chart_key, color, s2_force) in enumerate(MAP_PARAMS):
         # 1. Map Image
+        # ── Map cell ──────────────────────────────────────────────────────
         map_u_str = lang_strings.get("map_unavailable", "Map unavailable")
-        _no_map_msg = f"<i>{map_u_str}</i>"
-        map_img_flowable = Paragraph(_no_map_msg, ParagraphStyle("NoMap", fontSize=8, alignment=1, textColor=colors.grey))
+        map_cell  = Paragraph(f"<i>{map_u_str}</i>",
+                        ParagraphStyle("NoMap", fontSize=7, alignment=1, textColor=colors.grey))
         if aoi:
             try:
                 vra_result = vra_results_map.get(param)
@@ -3958,55 +3983,79 @@ def generate_report_response(payload: dict):
                     styled.save(sbuf, format='PNG', optimize=True)
                     sbuf.seek(0)
                     iw, ih = styled.size
+                    cell_h_max = ROW_H - 6 * mm
                     scale = min(col_map_w / iw, cell_h_max / ih)
-                    map_img_flowable = Image(sbuf, width=iw * scale, height=ih * scale)
+                    map_cell = Image(sbuf, width=iw * scale, height=ih * scale)
                 else:
                     # No map returned — build a parameter-specific informative message
                     if param == 'chlorophyll':
-                        info_msg = lang_strings.get("chlorophyll_na_msg")
+                        info_msg = lang_strings.get("chlorophyll_na_msg") or "Chlorophyll map unavailable"
                     else:
                         info_msg = f"<i>{label} {map_u_str}</i>"
                     
-                    map_img_flowable = Paragraph(info_msg,
+                    map_cell = Paragraph(info_msg,
                         ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
                                        textColor=colors.HexColor("#555555"), leading=11, spaceAfter=4,
                                        wordSelectMethod='shaping' if is_hi else 'default'))
             except Exception as e:
                 logger.warning(f"Map failed for {param}: {e}")
                 if param == 'chlorophyll':
-                    map_img_flowable = Paragraph(
-                        lang_strings.get("chlorophyll_short_na"),
+                    map_cell = Paragraph(
+                        lang_strings.get("chlorophyll_short_na") or "Chlorophyll map unavailable",
                         ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
                                        textColor=colors.HexColor("#555555"), leading=11,
                                        wordSelectMethod='shaping' if is_hi else 'default'))
-
-
 
         # 2. Chart Image
         chart_buf = io.BytesIO()
         _render_single_param_chart(series, chart_buf, chart_key, label, color)
         chart_buf.seek(0)
-        chart_img_flowable = Image(chart_buf, width=col_chart_w, height=cell_h_max)
 
-        # 3. Label Row
-        lbl_p = Paragraph(f"<b>{label}</b>", maplab)
+        # Read actual chart pixel size and fit to cell
+        chart_pil = PILImage.open(chart_buf)
+        cw, ch = chart_pil.size
+        avail_w = col_chart_w - 4 * mm
+        avail_h = ROW_H       - 8 * mm
+        cscale  = min(avail_w / cw, avail_h / ch)
+        chart_buf.seek(0)
+        chart_cell = Image(chart_buf, width=cw * cscale, height=ch * cscale)
 
-        # 4. Table Layout
-        row_table = Table(
-            [[lbl_p, ""], [map_img_flowable, chart_img_flowable]],
-            colWidths=[col_map_w, col_chart_w]
+        # ── Label row + content row ───────────────────────────────────────
+        label_para = Paragraph(
+            f"<b>{label}</b>",
+            ParagraphStyle("ParamLbl", fontName="Helvetica-Bold", fontSize=8,
+                           alignment=0, textColor=colors.HexColor("#1B5E20"))
         )
-        row_table.setStyle(TableStyle([
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('ALIGN', (0,0), (0, -1), 'CENTER'),
-            ('ALIGN', (1,0), (1, -1), 'CENTER'),
-            ('SPAN', (0,0), (1,0)), # span label across both
-            ('BOTTOMPADDING', (0,0), (1,0), 2),
-            ('TOPPADDING', (0,0), (-1,-1), 0),
-            ('BOTTOMPADDING', (0,1), (-1,1), 2),
+        # Each parameter = 2 sub-rows: [label spanning both cols] + [map | chart]
+        # Encode as single row with nested table for precise sizing
+        inner = Table(
+            [[label_para, ""], [map_cell, chart_cell]],
+            colWidths=[col_map_w, col_chart_w],
+            rowHeights=[6 * mm, ROW_H - 6 * mm],
+        )
+        inner.setStyle(TableStyle([
+            ('SPAN',          (0, 0), (1, 0)),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING',    (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ('LINEBELOW',     (0, 1), (-1, 1), 0.3,
+             colors.HexColor("#C8E6C9") if idx < len(MAP_PARAMS)-1 else colors.white),
         ]))
-        
-        story.append(KeepTogether(row_table))
+
+        table_data.append([inner])
+        row_heights.append(ROW_H)
+
+    # Single outer table — all 4 rows, strict fixed heights, no page break splitting
+    outer = Table(table_data, colWidths=[W], rowHeights=row_heights)
+    outer.setStyle(TableStyle([
+        ('VALIGN',     (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ('LEFTPADDING',  (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    story.append(outer)
 
 
     # ── Build PDF ─────────────────────────────────────────────────────
@@ -4020,7 +4069,7 @@ def generate_report_response(payload: dict):
     buffer.seek(0)
     return send_file(
         buffer,
-        mimetype="application/pdf",
+        mimetype="application/pdf",         
         as_attachment=True,
         download_name=f"KrishiZest_Report_{start_date}_{end_date}.pdf",
     )

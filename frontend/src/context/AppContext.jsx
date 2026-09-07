@@ -14,7 +14,7 @@ export function AppProvider({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
-    // Data states
+    // Data states       
     const today = new Date();
     const maxDate = today.toISOString().split('T')[0];
 

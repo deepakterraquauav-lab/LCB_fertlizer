@@ -41,6 +41,8 @@ from io import BytesIO
 import numpy as np
 import traceback
 from typing import Optional
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 import google.generativeai as genai  # noqa: E402
 from shapely.geometry import shape
@@ -2734,7 +2736,7 @@ def generate_ai_explanation(
     """
 
     try:
-        api_key = "AIzaSyCJDuNiytOFccf0V3MXCEgMKnByye8HiKY"
+        api_key = ""
         
         if not api_key or api_key == "YOUR_NEW_GEMINI_API_KEY_HERE":
             api_key = os.environ.get("GEMINI_API_KEY")
@@ -3324,6 +3326,7 @@ You are an agronomy advisor. Write in very simple, farmer‑friendly language.
 Avoid technical words like "regression", "skew", "correlation", "LAI", "CIre" or "PCA".
 Do not mention statistics, equations or pixel counts. Talk only about crop condition and area in percent.
 Use short sentences and no bullet points. Output must be HTML using <b>, <br/>, and <i>.
+IMPORTANT: Do NOT use colloquial Hindi terms of address or greetings such as "Bhai Sahab" (भाई साहब), "Bhaiya" (भैया), or "किसान भाई" (Kisan Bhai). Do NOT address the farmer as "Bhai Sahab" or similar informal terms. Keep the language polite, professional, and address the farmer in a neutral/standard respectful manner without informal titles.
 
 FIELD CONTEXT:
 - Location: {aoi_name}
@@ -3407,6 +3410,20 @@ Please write a 5–7 sentence continuous summary that:
 
     if ai_text:
         clean_html = ai_text.replace('```html', '').replace('```', '').strip()
+        # Clean up colloquial Hindi addressings like "Bhai Sahab", "bhai sahab", "भाई साहब", "भैया", "bhaiya", "किसान भाई", "किसान भाई साहब"
+        for phrase in [
+            "Bhai Sahab,", "bhai sahab,", "Bhai Sahab", "bhai sahab",
+            "भाई साहब,", "भाई साहब", "भैया,", "भैया", "bhaiya,", "bhaiya",
+            "किसान भाई,", "किसान भाई", "किसान भाई साहब,", "किसान भाई साहब"
+        ]:
+            clean_html = clean_html.replace(phrase, "")
+        
+        # Clean up spaces/punctuation leftovers
+        clean_html = clean_html.replace(" ,", ",").replace(",,", ",").strip()
+        if clean_html.startswith(","):
+            clean_html = clean_html[1:].strip()
+        clean_html = clean_html.strip()
+        
         # Ensure the summary is wrapped with a clear title if the model did not add one
         if "Field Intelligence Summary" not in clean_html:
             clean_html = f"<b>Field Intelligence Summary ({start_date} to {end_date})</b><br/>" + clean_html

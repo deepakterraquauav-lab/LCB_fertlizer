@@ -54,22 +54,12 @@ from pyproj import Geod, CRS, Transformer  # Geodesic and CRS utilities
 logger = logging.getLogger(__name__)
 
 
-def filter_series_to_15day_gap(series: list, min_gap_days: int = 15) -> list:
+def filter_series_to_15day_gap(series: list, start_date_str: str = None) -> list:
     """
-    Filters a time-series list so that consecutive selected images are at least
-    `min_gap_days` apart. Uses a greedy rolling approach anchored on the date
-    field of each series item (Sentinel-2 dates are the natural anchor).
-
-    If two clear images fall within the minimum gap window, only the FIRST one
-    is kept and the clock resets from that date.  The result preserves the
-    original dict structure of every selected item.
-
-    Args:
-        series        : list of dicts, each with a 'date' / 'day' / 'year_month' key.
-        min_gap_days  : minimum number of days required between consecutive picks.
-
-    Returns:
-        Filtered list, maintaining the original dict structure.
+    Filters a time-series list based on 15-day sequential windows.
+    Starting from start_date_str, selects the observation in each 15-day window
+    that has valid parameter data. If no data exists in the window, it falls back
+    to any available observation in that window.
     """
     if not series:
         return series
@@ -81,22 +71,69 @@ def filter_series_to_15day_gap(series: list, min_gap_days: int = 15) -> list:
         except Exception:
             return None
 
-    # Sort chronologically; items with unparseable dates are dropped.
+    def _has_valid_data(item: dict) -> bool:
+        # Check if any of the actual parameter keys have a valid (non-None, non-NaN) value.
+        # These are the exact keys used in the series data for this project.
+        PARAM_KEYS = ['pca', 'clre', 'lai', 'soilmoisture', 'soilmoisture_mm']
+        for k in PARAM_KEYS:
+            v = item.get(k)
+            if v is not None:
+                try:
+                    f = float(v)
+                    if f == f:  # NaN check (NaN != NaN)
+                        return True
+                except (TypeError, ValueError):
+                    pass
+        return False
+
     dated = [(item, _parse_date(item)) for item in series]
     dated = [(item, d) for item, d in dated if d is not None]
     dated.sort(key=lambda x: x[1])
 
-    selected = []
-    last_date = None
+    if not dated:
+        return []
 
-    for item, item_date in dated:
-        if last_date is None or (item_date - last_date).days >= min_gap_days:
-            selected.append(item)
-            last_date = item_date
+    if start_date_str:
+        try:
+            anchor_date = datetime.strptime(str(start_date_str)[:10], '%Y-%m-%d')
+        except Exception:
+            anchor_date = dated[0][1]
+    else:
+        anchor_date = dated[0][1]
+
+    if anchor_date > dated[-1][1]:
+        anchor_date = dated[0][1]
+        
+    end_date = dated[-1][1]
+    selected = []
+    
+    current_window_start = anchor_date
+    while current_window_start <= end_date:
+        current_window_end = current_window_start + timedelta(days=14)
+        
+        pts_in_window = [
+            (item, d) for item, d in dated 
+            if current_window_start <= d <= current_window_end
+        ]
+        
+        if pts_in_window:
+            # Try to find one with valid data first
+            valid_pts = [p for p in pts_in_window if _has_valid_data(p[0])]
+            
+            if valid_pts:
+                # Of those with valid data, pick the one closest to window end
+                valid_pts.sort(key=lambda x: abs((x[1] - current_window_end).days))
+                selected.append(valid_pts[0][0])
+            else:
+                # Fallback to any in window, closest to window end
+                pts_in_window.sort(key=lambda x: abs((x[1] - current_window_end).days))
+                selected.append(pts_in_window[0][0])
+            
+        current_window_start = current_window_start + timedelta(days=15)
 
     logger.info(
-        f"[15-day filter] {len(series)} series items → {len(selected)} selected "
-        f"(min gap = {min_gap_days} days)"
+        f"[15-day Window Filter] {len(series)} items → {len(selected)} selected "
+        f"(Start anchor = {anchor_date.strftime('%Y-%m-%d')})"
     )
     return selected
 
@@ -123,7 +160,7 @@ def extract_s2_dates_from_series(series: list) -> list:
 # Professional branding constants
 FOOTER_TEXT = "MapZest | Powered by TerrAqua UAV Solutions"
 
-REPORT_SUBTITLE = "Precision Agriculture Report"
+REPORT_SUBTITLE = "CropHealth Report"
 
 
 def add_scale_bar(ax, crs_epsg: int = 3857) -> None:
@@ -429,7 +466,7 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
             lat_correction = math.cos(math.radians(avg_lat))
             aoi_area_km2 = (lon_span * 111 * lat_correction) * (lat_span * 111)
             
-            logger.info(f"📐 AOI Size: ~{aoi_area_km2:.2f} km² ({lon_span:.4f}° x {lat_span:.4f}°)")
+            logger.info(f"ðŸ“ AOI Size: ~{aoi_area_km2:.2f} km² ({lon_span:.4f}Â° x {lat_span:.4f}Â°)")
             
         except Exception as e:
              logger.error(f"Error parsing AOI coordinates: {e}")
@@ -444,14 +481,14 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
             max_tiles = 25  # 5x5 grid
             dynamic_final_size = 3200  # Higher resolution
             dpi_setting = (600, 600)  # High DPI
-            logger.info("🔍 Very Small AOI detected - Using HIGH zoom (18) and HIGH resolution (3200px, 600 DPI)")
+            logger.info("ðŸ” Very Small AOI detected - Using HIGH zoom (18) and HIGH resolution (3200px, 600 DPI)")
             
         elif aoi_area_km2 < 0.5:  # Small AOI (0.1-0.5 km² ≈ 10-50 hectares)
             initial_zoom = 17
             max_tiles = 25
             dynamic_final_size = 2800
             dpi_setting = (500, 500)
-            logger.info("🔍 Small AOI detected - Using HIGH zoom (17) and HIGH resolution (2800px, 500 DPI)")
+            logger.info("ðŸ” Small AOI detected - Using HIGH zoom (17) and HIGH resolution (2800px, 500 DPI)")
             
         elif aoi_area_km2 < 2.0:  # Medium AOI (0.5-2 km² ≈ 50-200 hectares)
             initial_zoom = 16
@@ -472,7 +509,7 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
             max_tiles = 16
             dynamic_final_size = 2200
             dpi_setting = (300, 300)
-            logger.info("🗺️ Very Large AOI detected - Using LOWER zoom (14) and resolution (2200px, 300 DPI)")
+            logger.info("ðŸ—ºï¸ Very Large AOI detected - Using LOWER zoom (14) and resolution (2200px, 300 DPI)")
         
         current_zoom = initial_zoom
         tile_min_x, tile_min_y, tile_max_x, tile_max_y = 0, 0, 0, 0
@@ -558,11 +595,11 @@ def create_high_quality_tile_mosaic(aoi, start_date, end_date, layer_type,
                         if pixel_points[0] != pixel_points[-1]:
                             pixel_points.append(pixel_points[0])
 
-                        # Double-stroke outline improves visibility over any basemap tone.
-                        outer_w = max(4, current_zoom - 11)
-                        inner_w = max(2, outer_w - 2)
-                        draw.line(pixel_points, fill='white', width=outer_w)
-                        draw.line(pixel_points, fill='black', width=inner_w)
+                        # High-contrast black outer + yellow inner — visible on all imagery.
+                        outer_w = max(8, current_zoom - 8)
+                        inner_w = max(4, outer_w - 4)
+                        draw.line(pixel_points, fill='black', width=outer_w + 2)
+                        draw.line(pixel_points, fill='#FFFF00', width=inner_w)
             except Exception as e:
                 logger.warning(f"Failed to draw AOI outline: {e}")
         
@@ -686,7 +723,7 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
             lat_span = max_lat - min_lat
             aoi_area_km2 = (lon_span * 111 * lat_correction) * (lat_span * 111)
             
-            logger.info(f"📐 VRA AOI Size: ~{aoi_area_km2:.2f} km²")
+            logger.info(f"ðŸ“ VRA AOI Size: ~{aoi_area_km2:.2f} km²")
             
         except Exception as e:
              logger.error(f"Error parsing AOI coordinates: {e}")
@@ -741,45 +778,91 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
         
         logger.info(f"✅ VRA zoom: {current_zoom} (Grid: {width_tiles}x{height_tiles}, {total_tiles} tiles)")
         
+        # --- Fetch Satellite Background Template ---
+        # Using Google Satellite directly to perfectly match the main context map and guarantee it loads!
+        sat_tile_url_template = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+        
         # Fetch tiles
         tile_size = 256
         tiles = {}
+        sat_tiles = {}
         successful = 0
         
         for tx in range(tile_min_x, tile_max_x + 1):
             for ty in range(tile_min_y, tile_max_y + 1):
                 try:
+                    # 1. Fetch VRA Tile
                     tile_url = tile_url_template.replace('{x}', str(tx)).replace('{y}', str(ty)).replace('{z}', str(current_zoom))
-                    if '{s}' in tile_url:
-                        tile_url = tile_url.replace('{s}', 'a')
-                    
+                    if '{s}' in tile_url: tile_url = tile_url.replace('{s}', 'a')
                     tile_response = requests.get(tile_url, timeout=60)
-                    
                     if tile_response.status_code == 200:
-                        tile_img = PILImage.open(BytesIO(tile_response.content)).convert('RGBA')
-                        tiles[(tx, ty)] = tile_img
+                        tiles[(tx, ty)] = PILImage.open(BytesIO(tile_response.content)).convert('RGBA')
                         successful += 1
+                        
+                    # 2. Fetch SAT Tile
+                    if sat_tile_url_template:
+                        sat_url = sat_tile_url_template.replace('{x}', str(tx)).replace('{y}', str(ty)).replace('{z}', str(current_zoom))
+                        if '{s}' in sat_url: sat_url = sat_url.replace('{s}', 'a')
+                        
+                        sat_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                        for attempt in range(3):
+                            try:
+                                sat_response = requests.get(sat_url, headers=sat_headers, timeout=10)
+                                if sat_response.status_code == 200:
+                                    sat_tiles[(tx, ty)] = PILImage.open(BytesIO(sat_response.content)).convert('RGBA')
+                                    break
+                            except Exception as e:
+                                if attempt == 2:
+                                    logger.warning(f"Failed to fetch SAT tile ({tx}, {ty}) after 3 attempts: {e}")
                 except Exception as e:
-                    logger.debug(f"Failed to fetch VRA tile ({tx}, {ty}): {e}")
+                    logger.debug(f"Failed to fetch VRA/SAT tile ({tx}, {ty}): {e}")
                     continue
 
         if not tiles:
             logger.warning(f"No VRA tiles fetched for {parameter}")
             return None, None
         
-        logger.info(f"📦 Fetched {successful}/{total_tiles} VRA tiles")
+        logger.info(f"📦 Fetched {successful}/{total_tiles} VRA tiles (and {len(sat_tiles)} SAT tiles)")
         
-        # Stitch Mosaic
+        # Stitch both mosaics
         mosaic_width = width_tiles * tile_size
         mosaic_height = height_tiles * tile_size
-        mosaic = PILImage.new('RGBA', (mosaic_width, mosaic_height), (255, 255, 255, 0))
+        vra_mosaic = PILImage.new('RGB', (mosaic_width, mosaic_height), (0, 0, 0))
+        sat_mosaic = PILImage.new('RGB', (mosaic_width, mosaic_height), (255, 255, 255))  # White fallback so it blends into PDF
         
         for (tx, ty), tile_img in tiles.items():
             x_pos = (tx - tile_min_x) * tile_size
             y_pos = (ty - tile_min_y) * tile_size
-            mosaic.paste(tile_img, (x_pos, y_pos))
-        
-        # Draw AOI Outline if requested
+            vra_mosaic.paste(tile_img.convert('RGB'), (x_pos, y_pos))
+            if (tx, ty) in sat_tiles:
+                sat_mosaic.paste(sat_tiles[(tx, ty)].convert('RGB'), (x_pos, y_pos))
+
+        # --- Build AOI polygon mask (white inside field, black outside) ---
+        # This is the KEY fix: we clip VRA colors to the exact field boundary
+        aoi_mask = PILImage.new('L', (mosaic_width, mosaic_height), 0)  # black = outside
+        mask_draw = ImageDraw.Draw(aoi_mask)
+        try:
+            polygons = _extract_aoi_outer_rings(aoi)
+            for poly_coords in polygons:
+                pixel_points = []
+                for pt in poly_coords:
+                    if isinstance(pt, list) and len(pt) >= 2:
+                        lon, lat = pt[0], pt[1]
+                        tx_f, ty_f = lonlat_to_tile_xy(lon, lat, current_zoom)
+                        px = (tx_f - tile_min_x) * tile_size
+                        py = (ty_f - tile_min_y) * tile_size
+                        pixel_points.append((px, py))
+                if len(pixel_points) >= 3:
+                    mask_draw.polygon(pixel_points, fill=255)  # white = inside field
+        except Exception as e:
+            logger.warning(f"Failed to build AOI mask: {e}")
+
+        # Composite: satellite base, then paste VRA only inside the AOI polygon
+        composite = sat_mosaic.copy()
+        composite.paste(vra_mosaic, mask=aoi_mask)
+        mosaic = composite
+
+        # Draw AOI boundary outline (white line for contrast over satellite)
         if draw_aoi_outline and aoi:
             try:
                 draw = ImageDraw.Draw(mosaic)
@@ -789,28 +872,27 @@ def create_high_quality_vra_mosaic(aoi, start_date, end_date, parameter,
                     for pt in poly_coords:
                         if isinstance(pt, list) and len(pt) >= 2:
                             lon, lat = pt[0], pt[1]
-                            tx, ty = lonlat_to_tile_xy(lon, lat, current_zoom)
-                            px = (tx - tile_min_x) * tile_size
-                            py = (ty - tile_min_y) * tile_size
+                            tx_f, ty_f = lonlat_to_tile_xy(lon, lat, current_zoom)
+                            px = (tx_f - tile_min_x) * tile_size
+                            py = (ty_f - tile_min_y) * tile_size
                             pixel_points.append((px, py))
-                    
                     if len(pixel_points) >= 2:
                         if pixel_points[0] != pixel_points[-1]:
                             pixel_points.append(pixel_points[0])
-                        border_width = max(4, current_zoom - 11)
-                        # Double stroke keeps AOI visible on both bright and dark imagery.
-                        draw.line(pixel_points, fill='white', width=border_width + 1)
-                        draw.line(pixel_points, fill='#FF0000', width=border_width)
+                        draw.line(pixel_points, fill='white', width=2)
             except Exception as e:
                 logger.warning(f"Failed to draw VRA AOI outline: {e}")
-        
-        # Crop and Finish
-        mosaic = crop_to_content(mosaic, padding=30)
-        
-        if mosaic.mode == 'RGBA':
-            background = PILImage.new('RGB', mosaic.size, (255, 255, 255))
-            background.paste(mosaic, mask=mosaic.split()[3])
-            mosaic = background
+
+        # Crop tightly around the AOI bounding box (using mask bbox)
+        bbox = aoi_mask.getbbox()
+        if bbox:
+            left, upper, right, lower = bbox
+            pad = 60
+            left = max(0, left - pad)
+            upper = max(0, upper - pad)
+            right = min(mosaic.width, right + pad)
+            lower = min(mosaic.height, lower + pad)
+            mosaic = mosaic.crop((left, upper, right, lower))
         
         # Dynamic resizing
         aspect_ratio = mosaic.size[0] / mosaic.size[1]
@@ -950,7 +1032,7 @@ def calculate_map_scale(aoi, zoom_level, map_width_pixels=2400):
             label = f"{int(target_m)}m"
 
         logger.info(
-            f"📏 Calculated map scale: {label} (map width: {map_width_m:.0f} m, "
+            f"ðŸ“ Calculated map scale: {label} (map width: {map_width_m:.0f} m, "
             f"zoom {zoom_level}, {map_width_pixels} px)"
         )
         return target_m, label
@@ -1195,8 +1277,8 @@ def add_colormap_legend(mosaic_pil: PILImage.Image, layer_type: str, title: Opti
         # --- MUCH LARGER FONT SIZES FOR MAXIMUM READABILITY ---
         title_size = 32
         subtitle_size = 24
-        label_size = 160  # Legend labels - MASSIVE for visibility
-        stats_size = 130  # Statistics text - MASSIVE for visibility
+        label_size = 26   # Legend label font size
+        stats_size = 22   # Statistics text font size
         
         title_font = None
         subtitle_font = None
@@ -1237,7 +1319,7 @@ def add_colormap_legend(mosaic_pil: PILImage.Image, layer_type: str, title: Opti
             draw.polygon(arrow_points, fill=(0, 0, 0), outline=(255, 255, 255))
             
             # Draw 'N' label - LARGE AND BOLD
-            n_font_size = 70  # Very large for visibility
+            n_font_size = 120  # Very large for visibility
             try:
                 n_font = ImageFont.truetype(font_paths[0], n_font_size)
             except:
@@ -1439,11 +1521,11 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             'cwsi': ['#E57373', '#FFB74D', '#FFFF8D', '#4FC3F7', '#81D4FA'],
             'irrigation_need': ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#f7fbff'],
             'kc': ['#004529', '#238443', '#78C679', '#D9F0A3', '#FFFFE5'],
-            'soilmoisture': ['#08306b', '#2171b5', '#6baed6', '#c6dbef', '#f7fbff'],
+            'soilmoisture': ['#54278f', '#756bb1', '#9e9ac8', '#bcbddc', '#dadaeb'],
             'lst': ['#bd0026', '#f03b20', '#feb24c', '#ffeda0', '#ffffcc'],
             'etc': ['#54278f', '#756bb1', '#9e9ac8', '#c6dbef', '#f7fcfd'],
             'chlorophyll': ['#2e6b2d', '#4d9c44', '#7bbf6a', '#a8d5a2', '#d0f0c0'],
-            'lai': ['#00441b', '#238b45', '#74c476', '#a1d99b', '#c7e9c0']
+            'lai': ['#005a32', '#238b45', '#41ab5d', '#a1d99b', '#d9f0a3']
         }
         
         # EXACT LABELS FROM REACT CODE (High to Low)
@@ -1508,9 +1590,9 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             "C:\\Windows\\Fonts\\arial.ttf", "C:\\Windows\\Fonts\\arialbd.ttf"
         ]
         
-        label_size = 100
-        stats_size = 100
-        title_size = 80
+        label_size = 140
+        stats_size = 22
+        title_size = 26
         
         label_font, stats_font, title_font = None, None, None
         
@@ -1527,24 +1609,32 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
         if not label_font: label_font = ImageFont.load_default()
         if not stats_font: stats_font = ImageFont.load_default()
         if not title_font: title_font = ImageFont.load_default()
-        
-        # Draw North Arrow (larger and shifted to the left of the map)
+
+        # -- Draw Premium North Arrow --
         try:
-            arrow_size = 200
+            arrow_size = 250
             # Place arrow slightly to the left of the map mosaic
             arrow_x = max(20, paste_x - arrow_size - 40)
             arrow_y = padding + 20
             
-            arrow_points = [
+            # Use the same style as the context map (black/gray compass triangle)
+            draw.polygon([
                 (arrow_x + arrow_size // 2, arrow_y), 
-                (arrow_x, arrow_y + arrow_size),  
-                (arrow_x + arrow_size, arrow_y + arrow_size)  
-            ]
-            draw.polygon(arrow_points, fill=(0, 0, 0), outline=(255, 255, 255))
+                (arrow_x, arrow_y + arrow_size), 
+                (arrow_x + arrow_size, arrow_y + arrow_size)
+            ], fill='black', outline='red')
+
             
-            n_font_size = 110
+            draw.polygon([
+                (arrow_x + arrow_size // 2, arrow_y), 
+                (arrow_x, arrow_y + arrow_size), 
+                (arrow_x + arrow_size // 2, arrow_y + arrow_size // 2)
+            ], fill='gray')
+            
+            n_font_size = 120
+
             try:
-                n_font = ImageFont.truetype(font_paths[0], n_font_size)
+                n_font = ImageFont.truetype(font_paths[2], n_font_size) # bold Arial
             except:
                 n_font = stats_font
             
@@ -1557,7 +1647,9 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             
             n_x = arrow_x + (arrow_size - n_width) // 2
             n_y = arrow_y + arrow_size + 10
-            draw.text((n_x, n_y), n_text, fill=(0, 0, 0), font=n_font)
+            
+            draw.text((n_x, n_y), n_text, fill='black', font=n_font,
+                      stroke_width=2, stroke_fill='white')
         except Exception as e:
             logger.warning(f"Could not draw north arrow: {e}")
         
@@ -1566,7 +1658,7 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             scale_bar_width = 500
             scale_bar_height = 60
             scale_x = paste_x + 60
-            scale_y = paste_y + mosaic_h - 140
+            scale_y = paste_y + mosaic_h - 240  # Moved 100px UP so text doesn't overflow the bottom edge!
             
             if aoi:
                 # calculate_map_scale already assumes a 500‑px bar; keep width=500 so distance stays correct
@@ -1574,26 +1666,27 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             else:
                 scale_max_text = "500m" 
 
-            # Draw a simple solid bar
+            # Draw a simple solid bar (White with Black Outline for high visibility)
             draw.rectangle(
                 [scale_x, scale_y, scale_x + scale_bar_width, scale_y + scale_bar_height],
-                fill=(0, 0, 0),
+                fill=(255, 255, 255),
                 outline=(0, 0, 0),
                 width=3
             )
             
-            scale_font_size = 85
+            scale_font_size = 120  # Increased size
             try:
-                scale_font = ImageFont.truetype(font_paths[0], scale_font_size)
+                scale_font = ImageFont.truetype(font_paths[2], scale_font_size)  # font_paths[2] is BOLD Arial
             except:
                 scale_font = stats_font
             
-            draw.text((scale_x, scale_y + scale_bar_height + 8), "0", fill=(0, 0, 0), font=scale_font)
+            # Draw text as White with a Black stroke so it's visible anywhere
+            draw.text((scale_x, scale_y + scale_bar_height + 8), "0", fill=(255, 255, 255), font=scale_font, stroke_width=3, stroke_fill='black')
 
             max_bbox = draw.textbbox((0, 0), scale_max_text, font=scale_font)
             max_width = max_bbox[2] - max_bbox[0]
             max_x = scale_x + scale_bar_width - max_width
-            draw.text((max_x, scale_y + scale_bar_height + 8), scale_max_text, fill=(0, 0, 0), font=scale_font)
+            draw.text((max_x, scale_y + scale_bar_height + 8), scale_max_text, fill=(255, 255, 255), font=scale_font, stroke_width=3, stroke_fill='black')
         except Exception as e:
             logger.warning(f"Could not draw scale bar: {e}")
         
@@ -1635,20 +1728,7 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
                 logger.warning(f"Could not draw VRA statistics box: {e}")
         
         # --- DRAW ZONAL LEGEND BLOCKS ---
-        title_y = paste_y + mosaic_h + 40
-        
-        if hasattr(title_font, 'getbbox'):
-            title_bbox = draw.textbbox((0, 0), map_title, font=title_font)
-            title_width = title_bbox[2] - title_bbox[0]
-            title_height = title_bbox[3] - title_bbox[1]
-        else:
-            title_width = len(map_title) * 30
-            title_height = 80
-        
-        title_x = (new_w - title_width) // 2
-        draw.text((title_x, title_y), map_title, fill=(0, 0, 0), font=title_font)
-
-        legend_y = title_y + title_height + 50
+        legend_y = paste_y + mosaic_h + 30
         legend_width = int(mosaic_w * 0.80)
         legend_x_start = (new_w - legend_width) // 2
         legend_bar_h = 100
@@ -2327,11 +2407,7 @@ def get_translations(lang: str = "en") -> dict:
     """
     translations = {
         "en": {
-            "report_title": "Crop Health Report",
             "logo_alt": "MapZest Agricultural Intelligence",
-            "crop": "Crop",
-            "period": "Period",
-            "location": "Location",
             "not_specified": "Not specified",
             "aoi_title": "Area of Interest (AOI)",
             "aoi_label": "AOI",
@@ -2421,18 +2497,13 @@ def get_translations(lang: str = "en") -> dict:
             "health_moderate": "4 – 7<br/><i>Moderate</i>",
             "health_strong": "8 – 10<br/><i>Strong</i>",
             "aoi_map_main_title": "Area of Interest Map",
-            "aoi_map_subtitle": "Geographically aligned view showing the field boundary.",
-            "param_analysis_title": "Detailed Parameter Analysis",
+            "param_analysis_title": "Detailed Analysis",
             "map_unavailable": "Map unavailable",
             "chlorophyll_na_msg": "<b>Chlorophyll (CLRe) map not available.</b><br/>This layer requires Sentinel-2 red-edge bands (B5/B7).<br/>No Sentinel-2 imagery was found for the selected date range.<br/><i>Try a wider date range to include a cloud-free image.</i>",
             "chlorophyll_short_na": "<b>Chlorophyll map unavailable</b><br/><i>Sentinel-2 data not found for selected period.</i>",
         },
         "hi": {
-            "report_title": "सटीक कृषि विश्लेषण रिपोर्ट",
             "logo_alt": "MapZest कृषि बुद्धिमत्ता",
-            "crop": "फसल",
-            "period": "अवधि",
-            "location": "स्थान",
             "not_specified": "निर्दिष्ट नहीं",
             "aoi_title": "रुचि का क्षेत्र (AOI)",
             "aoi_label": "AOI",
@@ -3202,20 +3273,43 @@ def make_reportlab_image_high_quality(buf: io.BytesIO, max_width_pt: float, max_
 
 
 
-def _render_single_param_chart(series: list, outbuf, param_key: str, title: str, color: str = '#2E7D32'):
+def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
+                                color: str = '#2E7D32', application_date: str = None,
+                                start_date: str = None, end_date: str = None):
     """
-    Plots a single parameter (e.g. PCA, LAI, CLRe, or Soil Moisture) over time.
+    Plots a single parameter over time with enhanced visualization:
+    - Shaded fill under the trend line
+    - Mean reference line (dashed)
+    - Fertilizer application date vertical marker (red dotted)
+    - Stats annotation box (min / max / mean / trend)
+    - Unit label on Y-axis
     """
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.dates as mdates
     from datetime import datetime as _dt
-    import numpy as np
 
     fig, ax = plt.subplots(figsize=(7.0, 4.2), dpi=140)
-    ax.set_facecolor('#FAFAFA')
+    ax.set_facecolor('#F8FAFB')
     fig.patch.set_facecolor('white')
+
+    # Unit labels for Y-axis
+    _UNITS = {
+        'pca':            'Crop Health (0–1)',
+        'clre':           'CIre Index',
+        'lai':            'm² leaf / m² ground',
+        'soilmoisture':   '%',
+        'soilmoisture_mm':'%',
+        'ndvi':           'NDVI (0–1)',
+        'cwsi':           'Stress Index (0–1)',
+        'lst':            '°C',
+        'lst_c':          '°C',
+        'etc':            'mm / day',
+        'cwr':            'mm / day',
+        'kc':             'Kc',
+    }
+    unit_label = _UNITS.get(param_key, 'Value')
 
     dates, vals = [], []
     for row in series:
@@ -3230,17 +3324,64 @@ def _render_single_param_chart(series: list, outbuf, param_key: str, title: str,
             continue
 
     if len(vals) == 0:
-        ax.text(0.5, 0.5, 'No data available', ha='center', va='center',
-                transform=ax.transAxes, fontsize=10, color='grey')
+        ax.text(0.5, 0.5,
+                'No data available for this period.\nTry a wider date range.',
+                ha='center', va='center', transform=ax.transAxes,
+                fontsize=9, color='#888888',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='#F5F5F5', alpha=0.9))
     else:
-        ax.plot(dates, vals, color=color, linestyle='-', linewidth=2.0, marker='o', markersize=4)
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=5))
-        fig.autofmt_xdate(rotation=30, ha='right')
-        # ax.set_ylabel('Index Value', fontsize=8)
-        ax.grid(True, alpha=0.3, linewidth=0.8)
+        # â”€â”€ Main trend line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        ax.plot(dates, vals, color=color, linestyle='-', linewidth=2.2,
+                marker='o', markersize=5, zorder=5)
 
-    ax.set_title(title + ' Trend', fontsize=18, fontweight='bold', pad=6)
+        # â”€â”€ Shaded area fill under line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        ax.fill_between(dates, vals, alpha=0.13, color=color, zorder=2)
+
+        # â”€â”€ Mean / Threshold reference line â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        mean_val = sum(vals) / len(vals)
+
+        # â”€â”€ Fertilizer application date marker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if application_date:
+            try:
+                app_dt = _dt.strptime(str(application_date)[:10], '%Y-%m-%d')
+                if dates[0] <= app_dt <= dates[-1]:
+                    ax.axvline(app_dt, color='#C62828', linestyle=':', linewidth=2.0,
+                               alpha=0.85, zorder=6, label='Fertilizer Applied')
+                    ylims = ax.get_ylim()
+                    ax.text(app_dt, ylims[0] + (ylims[1] - ylims[0]) * 0.96,
+                            '  â†“ Fert.', color='#C62828', fontsize=7,
+                            va='top', ha='left', fontweight='bold')
+            except Exception:
+                pass
+
+        # â”€â”€ Y-axis + X-axis formatting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if start_date and end_date:
+            try:
+                sd = _dt.strptime(str(start_date)[:10], '%Y-%m-%d')
+                ed = _dt.strptime(str(end_date)[:10], '%Y-%m-%d')
+                ax.set_xlim(sd, ed)
+            except Exception:
+                pass
+
+        ax.set_ylabel(unit_label, fontsize=8, color='#444444')
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=6))
+        fig.autofmt_xdate(rotation=45, ha='right')
+        ax.grid(True, alpha=0.15, linewidth=0.6, color='#AAAAAA')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_color('#DDDDDD')
+        ax.spines['bottom'].set_color('#DDDDDD')
+
+        # â”€â”€ Legend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        if application_date:
+            ax.legend(fontsize=7, loc='lower left', framealpha=0.88,
+                      edgecolor='#CCCCCC', ncol=2)
+        else:
+            ax.legend(fontsize=7, loc='lower left', framealpha=0.88,
+                      edgecolor='#CCCCCC')
+
+    ax.set_title(title + ' Trend', fontsize=14, fontweight='bold', pad=7, color='#1A1A1A')
     plt.tight_layout(pad=0.8)
     fig.savefig(outbuf, format='png', bbox_inches='tight', dpi=140)
     plt.close(fig)
@@ -3344,12 +3485,13 @@ TEMPORAL EVOLUTION (one observation every ~15 days — use this to describe how 
 {temporal_trend_text}
 Higher CropHealth = better overall condition. Higher LeafArea = more canopy growth. Higher Greenness = stronger chlorophyll.
 ''' if temporal_trend_text else ''}
-Please write a 5–7 sentence continuous summary that:
-1) Explains in plain words how well the field has responded to fertilizer overall.
-2) Describes how much of the field is doing very well, doing okay, and still weak, using percentages of area (for example "around one‑third of the field").
-3) If temporal data is available, describes how the crop condition changed over time (e.g. improved after a certain date, dipped, peaked).
-4) Clearly points out if the response is uniform or patchy across the field.
-5) Ends with one or two direct, practical suggestions for the farmer.
+Please write exactly 4 short, concise lines (separated by <br/>). DO NOT use bullet point symbols (like • or -).
+Use the "%" symbol for percentages (e.g., "45%"). Do NOT write the word "percent". Include the specific percentage details provided above.
+Format each line to start with a short bold title, followed by a very concise statement:
+<b>Overall Response:</b> [1 brief sentence on how well the field responded overall].<br/>
+<b>Field Breakdown:</b> [1 brief sentence listing the exact percentages (%) of area that are strong, moderate, or weak].<br/>
+<b>Timeline Trend:</b> [1 brief sentence describing how the crop condition changed over the period].<br/>
+<b>Action Item:</b> [1 direct, practical suggestion for the farmer].
 """
 
     if language == "hi":
@@ -3425,12 +3567,400 @@ Please write a 5–7 sentence continuous summary that:
         clean_html = clean_html.strip()
         
         # Ensure the summary is wrapped with a clear title if the model did not add one
-        if "Field Intelligence Summary" not in clean_html:
-            clean_html = f"<b>Field Intelligence Summary ({start_date} to {end_date})</b><br/>" + clean_html
+        # Do NOT prepend the 'Field Intelligence Summary' heading — the section title already shows it
         return clean_html
 
     fallback_corr = get_corr(c.get('LAI_vs_CIre', {}))
     return f"<b>Field Intelligence Summary ({start_date} to {end_date})</b><br/>Fertilizer response analysis complete. Correlation between canopy density (LAI) and chlorophyll (CIre) is {fallback_corr}. Please configure an API key for full AI synthesis."
+
+
+def generate_farmer_report_sections(deep_stats: dict, series: list, start_date: str, end_date: str,
+                                     crop_name: str, field_name: str = "Field",
+                                     language: str = "en") -> dict:
+    """
+    Generates structured farmer-friendly report content for the new 2-page layout.
+    Returns a dict with: status, status_color, season_summary, what_happened,
+    key_findings, action_plan, map_descriptions.
+    Uses Claude (primary) → Gemini (fallback) APIs.
+    """
+
+    # ── 1. Compute data-driven values ──────────────────────────────────────
+    s = (deep_stats or {}).get('basic_stats', {}) or {}
+    z = (deep_stats or {}).get('spatial_zones', {}) or {}
+    temporal_stats = (deep_stats or {}).get('temporal_stats', []) or []
+
+    total_px = max(1, int(
+        (z.get('all_high_response', 0) or 0)
+        + (z.get('early_cire_response', 0) or 0)
+        + (z.get('structural_growth_only', 0) or 0)
+        + (z.get('no_response', 0) or 0)
+    ))
+    def _pct(k):
+        try:
+            return round(100.0 * float(z.get(k, 0) or 0) / float(total_px), 1)
+        except Exception:
+            return 0.0
+
+    p_full   = _pct('all_high_response')
+    p_early  = _pct('early_cire_response')
+    p_struct = _pct('structural_growth_only')
+    p_low    = _pct('no_response')
+
+    # Overall status from CropHealth score
+    ch_mean = s.get('CropHealth_mean')
+    if ch_mean is not None:
+        score_10 = max(0.0, min(10.0, float(ch_mean) * 10.0))
+    else:
+        score_10 = None
+
+    if score_10 is None:
+        status        = "Needs attention"
+        status_color  = "#B0BEC5"   # grey — no data
+    elif score_10 <= 3:
+        status        = "Needs attention"
+        status_color  = "#D32F2F"   # red
+    elif score_10 <= 7:
+        status        = "Average performance"
+        status_color  = "#F57C00"   # orange
+    else:
+        status        = "Good performance"
+        status_color  = "#2E7D32"   # green
+
+    # Build temporal summary for AI
+    temporal_lines = []
+    if temporal_stats:
+        n   = len(temporal_stats)
+        idx_early = 0
+        idx_mid   = n // 2
+        idx_end   = n - 1
+        for i, label in [(idx_early, "Early season"), (idx_mid, "Middle of season"), (idx_end, "End of season")]:
+            ts = temporal_stats[i]
+            d  = ts.get('date', 'N/A')
+            st = ts.get('stats', {})
+            ch = st.get('CropHealth_mean')
+            la = st.get('LAI_mean')
+            cl = st.get('CIre_mean')
+            sm_vals = [r.get('soilmoisture') or r.get('soilmoisture_mm') for r in series if r.get('date', '') >= d]
+            temporal_lines.append(
+                f"  {label} (around {d}): "
+                f"CropHealth={'good' if ch and ch > 0.5 else 'low'}, "
+                f"PlantCover={'dense' if la and la > 2 else 'sparse'}, "
+                f"Greenness={'strong' if cl and cl > 0.1 else 'weak'}"
+            )
+    temporal_summary = "\n".join(temporal_lines) if temporal_lines else "  Temporal breakdown not available."
+
+    # Compute average soil moisture for data-driven summary
+    sm_list = []
+    for r in (series or []):
+        v = r.get('soilmoisture') or r.get('soilmoisture_mm')
+        if v is not None:
+            try:
+                sm_list.append(float(v))
+            except Exception:
+                pass
+    sm_avg = round(sum(sm_list) / len(sm_list), 2) if sm_list else None
+    sm_summary = f"average {sm_avg} m³/m³" if sm_avg is not None else "observed seasonal levels"
+
+    # ── 2. Build AI prompt ──────────────────────────────────────────────────
+    lang_instr = (
+        "\nIMPORTANT: Write your ENTIRE response in simple Hindi language. "
+        "Use farmer-friendly Hindi only.\n"
+    ) if language == "hi" else ""
+
+    ai_prompt = f"""You are KrishiZest, an agricultural assistant. Write a seasonal field performance report.
+Your audience is non-technical farmers and FPO staff. Use simple, clear English.
+{lang_instr}
+IMPORTANT RULES:
+1. Do NOT use any of these technical words: NDVI, LAI, CIre, PCA, CropHealth, regression, correlation, pixel, index value, average, minimum, maximum, formula.
+2. Instead use these farmer-friendly terms only:
+   - "Overall Crop Condition" instead of Crop Health / NDVI
+   - "Leaf Greenness" instead of Chlorophyll / CIre
+   - "Plant Cover and Crop Density" instead of LAI
+   - "Available Soil Moisture" instead of Soil Moisture index
+3. Use cautious language: "Satellite observations suggest...", "This may indicate...", "A field visit is recommended to confirm."
+4. Do NOT prescribe specific fertiliser doses, pesticide names, or irrigation quantities.
+5. Keep all text short and practical.
+6. MAP LEGEND & COLOR SPECIFICATIONS (CRITICAL):
+   All 4 maps display a 5-step relative legend bar labeled: "Highest", "High", "Moderate", "Low", "Lowest".
+   - Overall Crop Condition, Leaf Greenness, and Plant Cover maps are strictly shades of GREEN (Dark green = Highest/High, Medium green = Moderate, Pale/Light green = Low/Lowest).
+   - Available Soil Moisture map is strictly shades of PURPLE/VIOLET (Dark purple = Highest/High, Pale lavender = Low/Lowest).
+   - ABSOLUTELY NEVER mention red, yellow, orange, or blue. These colors are NOT in the maps.
+   - Describe what the maps show by referencing the legend bar ("Highest" down to "Lowest") and the color tones.
+   - The action in "What to do" (MAP_*_DO) must directly reference the lagging zones from "What this map shows" (MAP_*_SHOWS) — e.g. ground inspection of 'Low' or 'Lowest' zones on the legend bar to verify soil, nutrient, or water issues.
+
+FIELD DATA (reference only — do NOT repeat raw numbers):
+- Crop: {crop_name}
+- Field: {field_name}
+- Period: {start_date} to {end_date}
+- Overall Crop Condition: {p_full}% strong response, {p_low}% weak/lagging response
+- Leaf Greenness (Chlorophyll): {p_early}% moderate-to-high active response
+- Plant Cover & Crop Density: {p_struct}% moderate canopy coverage
+- Available Soil Moisture: {sm_summary} across root zone
+- Overall seasonal status: {status}
+- Seasonal pattern:
+{temporal_summary}
+
+OUTPUT FORMAT — follow EXACTLY, including section headers with colons:
+
+SEASON_SUMMARY:
+[Write 50–70 words. Plain language. Explain how the crop performed during this season. Use "Satellite observations suggest..." style. Do not use technical terms.]
+
+WHAT_HAPPENED:
+Early season | [1 short sentence about early condition] | [1 simple interpretation]
+Middle of season | [1 short sentence about mid-season condition] | [1 simple interpretation]
+End of season | [1 short sentence about end condition] | [1 simple interpretation]
+
+KEY_FINDINGS:
+[Overall crop condition finding — 1 sentence]
+[Leaf greenness finding — 1 sentence]
+[Plant cover and crop density finding — 1 sentence]
+[Available soil moisture finding — 1 sentence]
+[Uneven field performance observation — 1 sentence, mention if some areas are better/worse]
+
+ACTION_PLAN:
+High | [urgent practical action] | [timing — e.g. "Before next sowing"]
+High | [another urgent action] | [timing]
+Medium | [moderate priority action] | [timing]
+Medium | [another medium action] | [timing]
+Low | [low priority action] | [timing]
+
+MAP_CROP_HEALTH_SHOWS: [20–35 words describing what the Overall Crop Condition map shows using the legend bar ("Highest" to "Lowest") and green tones. Dark green = 'Highest'/'High', pale green = 'Low'/'Lowest'. Do NOT mention red or yellow.]
+MAP_CROP_HEALTH_DO: [15–25 words describing one practical action directly targeting the 'Low' and 'Lowest' zones identified on the map — e.g. inspect roots and soil in 'Low' and 'Lowest' zones.]
+MAP_LEAF_GREENNESS_SHOWS: [20–35 words describing Leaf Greenness using the legend bar and green tones. Dark green = 'Highest' greenness, pale green = 'Low'/'Lowest'. Do NOT mention red or yellow.]
+MAP_LEAF_GREENNESS_DO: [15–25 words describing one practical action targeting the 'Low' greenness zones — e.g. inspect 'Low' greenness zones for nutrient stress.]
+MAP_PLANT_COVER_SHOWS: [20–35 words describing Plant Cover and Crop Density using the legend bar. Dark green = 'Highest' canopy cover, light green = 'Low'/'Lowest' density. Do NOT mention red or yellow.]
+MAP_PLANT_COVER_DO: [15–25 words describing one practical action targeting 'Low' density zones — e.g. check sparse/Low density areas for plant spacing or seed emergence.]
+MAP_SOIL_MOISTURE_SHOWS: [20–35 words describing Available Soil Moisture using the legend bar and purple tones. Dark purple = 'Highest' moisture, pale lavender = 'Low'/'Lowest' moisture. Do NOT mention blue, red, or yellow.]
+MAP_SOIL_MOISTURE_DO: [15–25 words describing one practical action targeting 'Low' moisture zones — e.g. inspect 'Low' moisture zones for irrigation reach and drainage uniformity.]
+"""
+
+    # ── 3. Call AI (Claude → Gemini fallback) ──────────────────────────────────
+    import requests as _req
+    raw_text = ""
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if anthropic_key:
+        try:
+            _r = _req.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": anthropic_key,
+                    "anthropic-version": "2023-06-01"
+                },
+                json={
+                    "model": "claude-3-5-sonnet-20241022",
+                    "max_tokens": 1800,
+                    "messages": [{"role": "user", "content": ai_prompt}]
+                },
+                timeout=45
+            )
+            if _r.status_code == 200:
+                raw_text = _r.json()['content'][0]['text']
+                logger.info("Farmer report sections: Claude success")
+        except Exception as e:
+            logger.warning(f"Claude failed for farmer sections: {e}")
+
+    if not raw_text:
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        if not gemini_key or gemini_key == "YOUR_GEMINI_API_KEY_HERE":
+            if os.path.exists(".env"):
+                try:
+                    with open(".env", "r") as _ef:
+                        for _line in _ef:
+                            if _line.startswith("GEMINI_API_KEY"):
+                                gemini_key = _line.split("=")[1].strip().strip('"').strip("'")
+                                break
+                except Exception:
+                    pass
+
+        if gemini_key and gemini_key != "YOUR_GEMINI_API_KEY_HERE":
+            for _model in ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']:
+                try:
+                    _url = f"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={gemini_key}"
+                    gen_config = {
+                        "maxOutputTokens": 4096,
+                        "temperature": 0.3,
+                    }
+                    if '2.5' in _model:
+                        gen_config["thinkingConfig"] = {"thinkingBudget": 0}
+                    _r = _req.post(_url, json={
+                        "contents": [{"parts": [{"text": ai_prompt}]}],
+                        "generationConfig": gen_config
+                    }, timeout=45)
+                    if _r.status_code == 200:
+                        raw_text = _r.json()['candidates'][0]['content']['parts'][0]['text']
+                        logger.info(f"Farmer report sections: Gemini {_model} success (length {len(raw_text)})")
+                        break
+                    else:
+                        logger.warning(f"Gemini {_model} status {_r.status_code}: {_r.text[:200]}")
+                except Exception as e:
+                    logger.warning(f"Gemini {_model} failed: {e}")
+
+    # ── 4. Parse AI output ──────────────────────────────────────────────────
+    import re as _re
+    def _extract_block(text, marker):
+        """Extract lines after 'MARKER:' until next ALL-CAPS marker."""
+        lines = text.split('\n')
+        in_block = False
+        result = []
+        for line in lines:
+            stripped = line.strip()
+            cleaned = stripped.lstrip('*#_ ').rstrip('*_ ')
+            if cleaned.upper().startswith(marker.upper() + ':'):
+                in_block = True
+                rest = cleaned[len(marker)+1:].strip().strip('*_').strip()
+                if rest:
+                    result.append(rest)
+                continue
+            if in_block:
+                if cleaned and ':' in cleaned:
+                    key = cleaned.split(':')[0].strip().replace('*', '').replace('#', '').replace('_', '')
+                    if (key.isupper() and len(key) > 3) or key in [
+                        'WHATHAPPENED', 'KEYFINDINGS', 'ACTIONPLAN',
+                        'SEASONSUMMARY', 'MAPCROPHEALTHSHOWS', 'MAPCROPHEALTHDO',
+                        'MAPLEAFGREENNESSSHOWS', 'MAPLEAFGREENNESSDO',
+                        'MAPPLANTCOVERSHOWS', 'MAPPLANTCOVERDO',
+                        'MAPSOILMOISTURESHOWS', 'MAPSOILMOISTUREDO'
+                    ]:
+                        break
+                result.append(stripped.strip('*_'))
+        return [r for r in result if r]
+
+    def _extract_inline(text, marker):
+        """Extract value from 'MARKER: value' on one line."""
+        for line in text.split('\n'):
+            cleaned = line.strip().lstrip('*#_ ').rstrip('*_ ')
+            if cleaned.upper().startswith(marker.upper() + ':'):
+                return cleaned[len(marker)+1:].strip().strip('*_').strip()
+            m = _re.match(rf'^\**#*\s*{_re.escape(marker)}\**\s*:\s*(.*)$', line.strip(), _re.IGNORECASE)
+            if m:
+                return m.group(1).strip().strip('*_').strip()
+        return ""
+
+    # Parse each section
+    season_summary = " ".join(_extract_block(raw_text, 'SEASON_SUMMARY'))
+
+    what_happened_raw = _extract_block(raw_text, 'WHAT_HAPPENED')
+    what_happened = []
+    for row in what_happened_raw:
+        parts = [p.strip() for p in row.split('|')]
+        if len(parts) >= 3:
+            what_happened.append(parts[:3])
+    if not what_happened:
+        what_happened = [
+            ["Early season",      "Crop established after sowing.", "Satellite observations suggest initial growth."],
+            ["Middle of season",  "Field showed variable performance.", "Some areas responded better than others."],
+            ["End of season",     "Overall condition weakened.", "A field visit is recommended to assess causes."],
+        ]
+
+    key_findings_raw = _extract_block(raw_text, 'KEY_FINDINGS')
+    key_findings = [f.lstrip('•-').strip() for f in key_findings_raw if f.strip() and not f.strip().startswith('KEY_FINDINGS')]
+    if not key_findings:
+        key_findings = [
+            f"Overall crop condition was {status.lower()} during the review period.",
+            "Leaf greenness varied across different parts of the field.",
+            "Plant cover and crop density showed uneven distribution.",
+            "Available soil moisture levels fluctuated during the season.",
+            "Some field zones performed better than others — a field inspection is recommended.",
+        ]
+
+    action_plan_raw = _extract_block(raw_text, 'ACTION_PLAN')
+    action_plan = []
+    for row in action_plan_raw:
+        parts = [p.strip() for p in row.split('|')]
+        if len(parts) >= 3:
+            action_plan.append(parts[:3])
+    if not action_plan:
+        action_plan = [
+            ["High",   "Conduct soil sampling from stronger and weaker zones of the field.", "Before next sowing"],
+            ["High",   "Inspect low-performing areas for germination, pest, or waterlogging signs.", "After next sowing"],
+            ["Medium", "Review irrigation reach and drainage across the field.", "Before next sowing"],
+            ["Medium", "Take field photographs at regular intervals during next season.", "Every 15 days"],
+            ["Low",    "Compare next season's performance with this report.", "End of next season"],
+        ]
+
+    def _clean_map_text(text: str, is_soil: bool = False) -> str:
+        """Sanitize any accidental references to red, yellow, orange, or blue."""
+        if not text:
+            return ""
+        t = text
+        t = _re.sub(r'\b(red and yellow|yellow and red|red or yellow|yellow or red)\b', "Low and Lowest", t, flags=_re.IGNORECASE)
+        t = _re.sub(r'\b(red|yellow|orange)\s+areas\b', "zones marked as Low or Lowest on the legend bar", t, flags=_re.IGNORECASE)
+        t = _re.sub(r'\b(red|yellow|orange)\s+zones\b', "Low or Lowest zones on the legend", t, flags=_re.IGNORECASE)
+        t = _re.sub(r'\b(red|yellow|orange)\b', "lower-performing", t, flags=_re.IGNORECASE)
+        if not is_soil:
+            t = _re.sub(r'\bblue\b', "dark green", t, flags=_re.IGNORECASE)
+        else:
+            t = _re.sub(r'\bblue\b', "dark purple", t, flags=_re.IGNORECASE)
+        t = _re.sub(r'लाल और पीले|पीले और लाल|लाल या पीले', "कम और सबसे कम (Low/Lowest)", t)
+        t = _re.sub(r'लाल|पीले|पीला', "कम (Low)", t)
+        return t.strip()
+
+    if language == "hi":
+        fb_shows_ch = f"लीजेंड बार के अनुसार गहरे हरे क्षेत्र 'Highest' और 'High' फसल स्थिति दर्शाते हैं। हल्के हरे क्षेत्र 'Low' और 'Lowest' स्थिति ({p_low}% क्षेत्र) दर्शाते हैं जहां फसल की वृद्धि कमजोर है।"
+        fb_do_ch    = "लीजेंड पर 'Low' और 'Lowest' दर्शाए गए क्षेत्रों का स्थलीय निरीक्षण करें और फसल की जड़ों व मिट्टी की स्थिति की जांच करें।"
+        fb_shows_cl = f"लीजेंड बार पर गहरे हरे रंग वाले क्षेत्र 'Highest' पत्तियों का हरापन दर्शाते हैं। हल्के हरे क्षेत्र 'Low' और 'Lowest' स्तर दिखाते हैं ({100.0 - p_early:.1f}% क्षेत्र में कम सक्रियता)।"
+        fb_do_cl    = "'Low' और 'Lowest' हरेपन वाले क्षेत्रों में पोषक तत्वों (विशेषकर नाइट्रोजन) की कमी या पत्तियों के तनाव की जांच करें।"
+        fb_shows_la = f"गहरे हरे क्षेत्र लीजेंड के अनुसार 'Highest' फसल घनत्व और घने फैलाव को दर्शाते हैं। हल्के हरे क्षेत्र 'Low' विरल आवरण दिखाते हैं ({100.0 - p_struct:.1f}% क्षेत्र)।"
+        fb_do_la    = "'Low' घनत्व वाले क्षेत्रों में अंकुरण, पौधों की दूरी और कीट या रोग के प्रभाव की जांच करें।"
+        fb_shows_sm = f"गहरे बैंगनी क्षेत्र लीजेंड बार पर 'Highest' नमी दर्शाते हैं। हल्के बैंगनी (लैवेंडर) क्षेत्र 'Low' और 'Lowest' नमी स्तर दर्शाते हैं (औसत नमी: {sm_summary})।"
+        fb_do_sm    = "'Low' नमी वाले क्षेत्रों में सिंचाई की पहुंच, ढलान और मिट्टी की जलधारण क्षमता की जांच करें।"
+    else:
+        fb_shows_ch = f"Dark green areas show 'Highest' to 'High' crop condition on the legend bar. Lighter pale green areas indicate 'Low' to 'Lowest' performance ({p_low}% of field) where vigor is lagging."
+        fb_do_ch    = "Prioritize ground visits to areas marked as 'Low' or 'Lowest' on the legend to check root health and soil conditions."
+        fb_shows_cl = f"Dark green zones represent 'Highest' leaf greenness and active photosynthesis on the legend bar. Pale green areas indicate 'Low' or 'Lowest' greenness ({100.0 - p_early:.1f}% of field showing lower activity)."
+        fb_do_cl    = "Inspect 'Low' and 'Lowest' greenness areas for signs of nutrient deficiency, especially nitrogen, or foliage stress."
+        fb_shows_la = f"Dark green areas indicate 'Highest' canopy cover and dense crop growth on the legend. Lighter green areas show 'Low' to 'Lowest' plant density ({100.0 - p_struct:.1f}% sparse canopy)."
+        fb_do_la    = "Check 'Low' density zones for poor emergence, uneven seed germination, or localized pest damage."
+        fb_shows_sm = f"Dark purple areas indicate 'Highest' available soil moisture on the legend bar. Light lavender areas represent 'Low' to 'Lowest' moisture retention (field average: {sm_summary})."
+        fb_do_sm    = "Review irrigation reach, drainage uniformity, and soil compaction in zones showing 'Low' moisture."
+
+    raw_ch_shows = _clean_map_text(_extract_inline(raw_text, 'MAP_CROP_HEALTH_SHOWS'), False)
+    raw_ch_do    = _clean_map_text(_extract_inline(raw_text, 'MAP_CROP_HEALTH_DO'), False)
+    raw_cl_shows = _clean_map_text(_extract_inline(raw_text, 'MAP_LEAF_GREENNESS_SHOWS'), False)
+    raw_cl_do    = _clean_map_text(_extract_inline(raw_text, 'MAP_LEAF_GREENNESS_DO'), False)
+    raw_la_shows = _clean_map_text(_extract_inline(raw_text, 'MAP_PLANT_COVER_SHOWS'), False)
+    raw_la_do    = _clean_map_text(_extract_inline(raw_text, 'MAP_PLANT_COVER_DO'), False)
+    raw_sm_shows = _clean_map_text(_extract_inline(raw_text, 'MAP_SOIL_MOISTURE_SHOWS'), True)
+    raw_sm_do    = _clean_map_text(_extract_inline(raw_text, 'MAP_SOIL_MOISTURE_DO'), True)
+
+    map_descriptions = {
+        'crop_health': {
+            'what_shows': raw_ch_shows if raw_ch_shows else fb_shows_ch,
+            'what_to_do': raw_ch_do if raw_ch_do else fb_do_ch,
+        },
+        'leaf_greenness': {
+            'what_shows': raw_cl_shows if raw_cl_shows else fb_shows_cl,
+            'what_to_do': raw_cl_do if raw_cl_do else fb_do_cl,
+        },
+        'plant_cover': {
+            'what_shows': raw_la_shows if raw_la_shows else fb_shows_la,
+            'what_to_do': raw_la_do if raw_la_do else fb_do_la,
+        },
+        'soil_moisture': {
+            'what_shows': raw_sm_shows if raw_sm_shows else fb_shows_sm,
+            'what_to_do': raw_sm_do if raw_sm_do else fb_do_sm,
+        },
+    }
+
+    if not season_summary:
+        season_summary = (
+            f"Satellite observations suggest that the {crop_name} crop at {field_name} showed "
+            f"{status.lower()} during the period {start_date} to {end_date}. "
+            f"Approximately {p_full}% of the field area showed a strong response, while {p_low}% "
+            f"showed weak or no visible response. A field visit is recommended to confirm these observations."
+        )
+
+    return {
+        'status':           status,
+        'status_color':     status_color,
+        'score_10':         score_10,
+        'season_summary':   season_summary,
+        'what_happened':    what_happened,
+        'key_findings':     key_findings,
+        'action_plan':      action_plan,
+        'map_descriptions': map_descriptions,
+    }
 
 def create_perfect_context_map(aoi, zoom=18, padding=150):
     """
@@ -3514,8 +4044,7 @@ def create_perfect_context_map(aoi, zoom=18, padding=150):
             px_pts = process_ring(ring)
             if px_pts:
                 pts = px_pts + [px_pts[0]] # Close the ring
-                draw.line(pts, fill='#006400', width=8) # Dark Green thick
-                draw.line(pts, fill='#90EE90', width=4) # Light Green thin center
+                draw.line(pts, fill='#FFFF00', width=4)    # Single clean yellow border for context map
 
         if geom_type == 'Polygon':
             for ring in coords:
@@ -3533,6 +4062,60 @@ def create_perfect_context_map(aoi, zoom=18, padding=150):
             c_max_y = min(canvas_h, max(all_px_y) + padding)
             canvas = canvas.crop((c_min_x, c_min_y, c_max_x, c_max_y))
             
+        # â”€â”€ Cartographic Overlays: North Arrow + Scale Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        try:
+            _ov_draw = ImageDraw.Draw(canvas)
+            _cw, _ch = canvas.size
+
+            # North Arrow (top-right corner)
+            _as = max(60, int(min(_cw, _ch) * 0.12))
+            _ax = _cw - _as - 18
+            _ay = 18
+            # Black outer triangle
+            _ov_draw.polygon([
+                (_ax + _as // 2, _ay), (_ax, _ay + _as), (_ax + _as, _ay + _as)
+            ], fill='black', outline='gray')
+            # Gray left half for compass appearance
+            _ov_draw.polygon([
+                (_ax + _as // 2, _ay), (_ax, _ay + _as), (_ax + _as // 2, _ay + _as // 2)
+            ], fill='gray')
+            try:
+                _nf = ImageFont.truetype("C:\\Windows\\Fonts\\arialbd.ttf", max(14, _as // 3))
+            except Exception:
+                _nf = ImageFont.load_default()
+            _nb = _ov_draw.textbbox((0, 0), "N", font=_nf)
+            _nw = _nb[2] - _nb[0]
+            _ov_draw.text((_ax + (_as - _nw) // 2, _ay + _as + 5), "N",
+                          fill='white', font=_nf, stroke_width=2, stroke_fill='black')
+
+            # Scale Bar (bottom-left corner)
+            _blen = int(_cw * 0.22)
+            _bx, _by = 18, _ch - 48
+            _seg = _blen // 4
+            for _si in range(4):
+                _fc = 'black' if _si % 2 == 0 else 'white'
+                _ov_draw.rectangle(
+                    [_bx + _si * _seg, _by, _bx + (_si + 1) * _seg, _by + 10],
+                    fill=_fc, outline='black'
+                )
+            
+            # Use calculate_map_scale to get the exact distance
+            try:
+                _, scale_max_text = calculate_map_scale(aoi, zoom, _cw)
+            except Exception:
+                scale_max_text = "500m"
+
+            try:
+                _sf = ImageFont.truetype("C:\\Windows\\Fonts\\arial.ttf", 12)
+            except Exception:
+                _sf = ImageFont.load_default()
+            _ov_draw.text((_bx, _by - 18), "0", fill='white', font=_sf,
+                          stroke_width=1, stroke_fill='black')
+            _ov_draw.text((_bx + _blen + 4, _by - 18), scale_max_text, fill='white', font=_sf,
+                          stroke_width=1, stroke_fill='black')
+        except Exception as _ov_err:
+            logger.debug(f"Map overlays: {_ov_err}")
+
         buf = io.BytesIO()
         canvas.save(buf, format='PNG')
         buf.seek(0)
@@ -3540,6 +4123,301 @@ def create_perfect_context_map(aoi, zoom=18, padding=150):
     except Exception as e:
         logger.error(f"Error creating perfect context map: {e}", exc_info=True)
         return None
+
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# Per-parameter metadata: descriptions, units, and interpretation shown under each chart
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+_PARAM_META = {
+    'pca': {
+        'full_name': 'Crop Health',
+        'unit': 'Score (0 to 1)',
+        'what': 'Crop showed healthy early growth before experiencing steady decline and persistent stress towards season end.',
+        'good_range': 'Good field: above 0.6',
+    },
+    'chlorophyll': {
+        'full_name': 'Crop Greenness (Chlorophyll)',
+        'unit': 'Greenness Level',
+        'what': 'Leaf greenness peaked during vegetative phase then steadily decreased as the crop matured.',
+        'good_range': 'Healthy active crop: 1.0 to 4.0',
+    },
+    'lai': {
+        'full_name': 'Leaf Cover (Canopy Density)',
+        'unit': 'Cover Level',
+        'what': 'Canopy density expanded strongly early on before thinning rapidly towards the end of the period.',
+        'good_range': 'Good crop cover: 2.0 to 6.0',
+    },
+    'soilmoisture': {
+        'full_name': 'Soil Water Level (Moisture)',
+        'unit': '% Water in Soil',
+        'what': 'Soil moisture was adequate initially but dropped significantly, resulting in late-season dry conditions and stress.',
+        'good_range': 'Best range for most crops: 30% to 65%',
+    },
+}
+
+
+def generate_all_parameter_interpretations(series, vra_results_map, start_date, end_date, crop_name, language='en'):
+    """
+    Generate farmer-friendly conclusions for all 4 parameters:
+    Crop Health (pca), Chlorophyll, Leaf Area Index (lai), Soil Moisture.
+    Adheres strictly to the prompt:
+    'Act as an agricultural scientist interpreting a farmerâ€™s field. Combine the whole-period composite map
+    with the complete time series to understand how the crop behaved throughout the period. Summarize the fieldâ€™s
+    overall condition, major changes, improvement or decline, and stability in simple farmer-friendly language.
+    Mention stress or recovery only when supported by the observed pattern. Do not explain the index, map,
+    statistics, technical terms, or methodology. Do not guess causes. Return only one natural conclusion of
+    maximum 20 words for each parameter.'
+    """
+    import json
+
+    param_keys = [
+        ('pca', 'Crop Health', 'pca'),
+        ('chlorophyll', 'Crop Greenness', 'clre'),
+        ('lai', 'Leaf Cover / Canopy Density', 'lai'),
+        ('soilmoisture', 'Soil Moisture', 'soilmoisture')
+    ]
+
+    def _clean_conclusion(text):
+        if not text:
+            return ""
+        text = text.strip().strip('"\'*`')
+        words = text.split()
+        if len(words) > 20:
+            text = " ".join(words[:20]).rstrip(".,;:-") + "."
+        return text
+
+    # Extract time-series values & summary for each parameter
+    param_stats = {}
+    param_obs_text = {}
+
+    for param, label, chart_key in param_keys:
+        vals = []
+        for row in (series or []):
+            v = row.get(chart_key) or row.get(chart_key + '_mm')
+            d = row.get('date') or row.get('start_date')
+            if v is not None:
+                try:
+                    vals.append((str(d), float(v)))
+                except Exception:
+                    pass
+        
+        # Whole-period composite map stats & spatial zone counts
+        map_context_str = ""
+        vra_res = vra_results_map.get(param) if vra_results_map else None
+        vra_data = vra_res[1] if vra_res and len(vra_res) >= 3 else None
+        if vra_data:
+            zc = vra_data.get('zoneCounts', {})
+            total_px = sum(zc.values()) if zc else 0
+            if total_px > 0:
+                low_pct = round(100.0 * (zc.get('lowest', 0) + zc.get('low', 0)) / total_px, 1)
+                mod_pct = round(100.0 * zc.get('moderate', 0) / total_px, 1)
+                high_pct = round(100.0 * (zc.get('highest', 0) + zc.get('high', 0)) / total_px, 1)
+                map_context_str = f"Composite map coverage: {low_pct}% low/stressed, {mod_pct}% moderate, {high_pct}% strong/healthy condition across the field."
+
+        if vals:
+            first_d, first_v = vals[0]
+            last_d, last_v = vals[-1]
+            min_entry = min(vals, key=lambda x: x[1])
+            max_entry = max(vals, key=lambda x: x[1])
+            avg_v = sum(v for _, v in vals) / len(vals)
+            trend = "stable"
+            chg = last_v - first_v
+            thr = max(abs(avg_v) * 0.05, 0.01)
+            if chg > thr:
+                trend = "improving"
+            elif chg < -thr:
+                trend = "declining"
+
+            peaked_then_dropped = False
+            max_idx = [i for i, item in enumerate(vals) if item == max_entry][0]
+            if 0 < max_idx < len(vals) - 1:
+                if (max_entry[1] - first_v) > thr and (max_entry[1] - last_v) > thr:
+                    peaked_then_dropped = True
+
+            param_stats[param] = {
+                'vals': vals,
+                'first': first_v,
+                'last': last_v,
+                'min': min_entry[1],
+                'max': max_entry[1],
+                'max_date': max_entry[0],
+                'avg': avg_v,
+                'trend': trend,
+                'peaked_then_dropped': peaked_then_dropped
+            }
+            
+            # Format chronological timeline of all satellite observations
+            timeline_str = ", ".join(f"{d}: {v:.2f}" for d, v in vals)
+            obs_lines = [
+                f"- Complete Time Series Points: [{timeline_str}]",
+                f"- Calculated Statistics: Average={avg_v:.3f}, Minimum={min_entry[1]:.3f} (on {min_entry[0]}), Maximum={max_entry[1]:.3f} (on {max_entry[0]}), Start={first_v:.3f}, End={last_v:.3f}",
+                f"- Observed Trajectory: Overall trend is {trend}." + (" Peaked mid-season then sharply declined towards end." if peaked_then_dropped else "")
+            ]
+            if map_context_str:
+                obs_lines.append(f"- Whole-Period Composite Map: {map_context_str}")
+            
+            param_obs_text[param] = "\n".join(obs_lines)
+        else:
+            param_stats[param] = None
+            param_obs_text[param] = "No time series data available."
+
+    # Try Gemini AI generation with strict instruction
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    if not gemini_key:
+        try:
+            from dotenv import load_dotenv as _ldenv
+            _ldenv()
+            gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        except Exception:
+            pass
+    conclusions = {}
+
+    if gemini_key and gemini_key != "YOUR_GEMINI_API_KEY_HERE":
+        try:
+            prompt = f"""Act as an agricultural scientist interpreting a farmerâ€™s field. Combine the whole-period composite map with the complete time series to understand how the crop behaved throughout the period. Summarize the fieldâ€™s overall condition, major changes, improvement or decline, and stability in simple farmer-friendly language. Mention stress or recovery only when supported by the observed pattern. Do not explain the index, map, statistics, technical terms, or methodology. Do not guess causes. Return only one natural conclusion of maximum 20 words for each parameter.
+
+Field Context:
+
+Parameter Observations:
+1. pca (Crop Health):
+{param_obs_text.get('pca')}
+
+2. chlorophyll (Crop Greenness / Chlorophyll):
+{param_obs_text.get('chlorophyll')}
+
+3. lai (Leaf Cover / Canopy Density):
+{param_obs_text.get('lai')}
+
+4. soilmoisture (Soil Moisture / Water Level):
+{param_obs_text.get('soilmoisture')}
+
+Strictly return a valid JSON object mapping each key ("pca", "chlorophyll", "lai", "soilmoisture") to its natural conclusion string (maximum 20 words)."""
+
+            if language == "hi":
+                prompt += "\nReturn each conclusion in simple, farmer-friendly Hindi (maximum 20 words)."
+
+            body = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "responseMimeType": "application/json",
+                    "maxOutputTokens": 2000,
+                    "temperature": 0.2
+                }
+            }
+            import time
+            import requests as _req
+            for model_name in ['gemini-3.5-flash', 'gemini-2.5-flash']:
+                for attempt in range(2):
+                    try:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                        resp = _req.post(url, json=body, timeout=25)
+                        if resp.status_code == 200:
+                            raw_json = resp.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+                            if raw_json.startswith("```"):
+                                raw_json = raw_json.strip("` \n").removeprefix("json").strip()
+                            parsed = json.loads(raw_json)
+                            for p, _, _ in param_keys:
+                                if p in parsed and parsed[p]:
+                                    conclusions[p] = _clean_conclusion(parsed[p])
+                            if len(conclusions) == 4:
+                                logger.info(f"✅ Generated 4 parameter conclusions with Gemini ({model_name})")
+                                return conclusions
+                        elif resp.status_code in [503, 429]:
+                            time.sleep(2)
+                            continue
+                        else:
+                            break  # Bad request or not found, try next model
+                    except Exception as _ge:
+                        logger.debug(f"Gemini {model_name} failed for param conclusions: {_ge}")
+                        break
+        except Exception as e:
+            logger.warning(f"Error calling Gemini for parameter conclusions: {e}")
+
+    # Fallback rule-based agricultural scientist interpretation (always guaranteed <= 20 words)
+    fallback_conclusions = {
+        'en': {
+            'pca': {
+                'peaked_drop': "Crop showed strong early vigor but later declined, indicating onset of stress.",
+                'declining': "Crop conditions steadily declined over the period, suggesting persistent field-level stress.",
+                'improving': "Crop health consistently improved, reflecting robust plant development and resilience.",
+                'stable': "Crop conditions remained relatively stable and normal throughout the observed period.",
+                'low': "Crop vigor remained persistently low throughout the period, suggesting underlying stress conditions."
+            },
+            'chlorophyll': {
+                'peaked_drop': "Leaf greenness was strong initially but faded steadily as the crop matured.",
+                'declining': "Crop greenness steadily dropped, suggesting possible nutrient deficiency or onset of senescence.",
+                'improving': "Crop greenness increased steadily, indicating good nutrition and healthy development.",
+                'stable': "Crop greenness remained stable and normal throughout the observed period.",
+                'low': "Leaf greenness stayed persistently low, indicating suboptimal photosynthetic activity."
+            },
+            'lai': {
+                'peaked_drop': "Crop canopy expansion was excellent initially but dropped off sharply later.",
+                'declining': "Leaf area and canopy expansion declined steadily, leading to a progressively thinning crop.",
+                'improving': "Canopy expansion steadily increased, resulting in good vegetation density across the field.",
+                'stable': "Crop canopy coverage in the field remained consistent and stable throughout the period.",
+                'low': "Canopy expansion was consistently low, leaving the field with sparse vegetation throughout."
+            },
+            'soilmoisture': {
+                'peaked_drop': "Soil moisture was adequate initially but dropped significantly, resulting in late-season dry conditions and stress.",
+                'declining': "Soil moisture levels declined steadily throughout the period, resulting in prolonged moisture stress across the field.",
+                'improving': "Soil moisture levels improved and remained well-replenished, providing favorable moisture conditions for crop development.",
+                'stable': "Soil moisture remained stable and adequate, supporting steady crop water requirements throughout the period.",
+                'low': "Soil moisture stayed critically low throughout the period, indicating severe and continuous water stress."
+            }
+        },
+        'hi': {
+            'pca': {
+                'peaked_drop': "फसल में शुरुआत में अच्छी वृद्धि दिखी, लेकिन बाद में गिरावट और तनाव दर्ज किया गया।",
+                'declining': "पूरे समय फसल की स्थिति में लगातार गिरावट देखी गई, जिससे खेत में तनाव का पता चलता है।",
+                'improving': "फसल के स्वास्थ्य में निरंतर सुधार हुआ और पौधे मजबूत व स्वस्थ बने रहे।",
+                'stable': "पूरी अवधि के दौरान फसल की स्थिति स्थिर और सामान्य बनी रही।",
+                'low': "पूरी अवधि में फसल की स्थिति कमजोर और तनावग्रस्त बनी रही।"
+            },
+            'chlorophyll': {
+                'peaked_drop': "शुरुआत में पत्तियों का हरापन अच्छा रहा, जो फसल पकने के साथ धीरे-धीरे कम हुआ।",
+                'declining': "फसल के हरेपन में लगातार कमी आई, जिससे पोषक तत्वों की कमी का संकेत मिलता है।",
+                'improving': "फसल में हरापन लगातार बढ़ा, जो अच्छे पोषण और स्वस्थ विकास को दर्शाता है।",
+                'stable': "फसल का हरापन पूरी अवधि में स्थिर और सामान्य बना रहा।",
+                'low': "पत्तियों में हरापन लगातार कम रहा, जिससे सामान्य से कम वानस्पतिक गतिविधि दिखी।"
+            },
+            'lai': {
+                'peaked_drop': "शुरुआत में फसल का फैलाव बहुत अच्छा रहा, जो बाद में तेजी से कम हुआ।",
+                'declining': "पत्तियों के फैलाव में लगातार कमी आई और फसल धीरे-धीरे हल्की होती गई।",
+                'improving': "फसल का फैलाव लगातार बढ़ा और पूरे खेत में अच्छी सघनता बनी।",
+                'stable': "खेत में फसल का फैलाव पूरी अवधि में एक समान और स्थिर बना रहा।",
+                'low': "पूरे समय फसल का फैलाव कम और खेत में हरियाली हल्की बनी रही।"
+            },
+            'soilmoisture': {
+                'peaked_drop': "शुरुआत में मिट्टी में नमी पर्याप्त थी, लेकिन बाद में भारी गिरावट से सूखा तनाव बना।",
+                'declining': "मिट्टी की नमी में लगातार कमी आई, जिससे खेत में सूखे की स्थिति बनी।",
+                'improving': "मिट्टी में नमी का स्तर सुधरा और फसल के लिए अनुकूल बना रहा।",
+                'stable': "मिट्टी में पानी की मात्रा संतुलित और फसल के लिए पर्याप्त बनी रही।",
+                'low': "मिट्टी में नमी की भारी कमी रही, जिससे फसल को लगातार पानी का तनाव झेलना पड़ा।"
+            }
+        }
+    }
+
+    lang_key = 'hi' if language == 'hi' else 'en'
+    fb = fallback_conclusions.get(lang_key, fallback_conclusions['en'])
+
+    for p, _, _ in param_keys:
+        if p not in conclusions or not conclusions[p]:
+            st = param_stats.get(p)
+            if not st:
+                conclusions[p] = fb[p]['stable']
+            elif st.get('peaked_then_dropped'):
+                conclusions[p] = fb[p]['peaked_drop']
+            elif st.get('trend') == 'declining':
+                conclusions[p] = fb[p]['declining']
+            elif st.get('trend') == 'improving':
+                conclusions[p] = fb[p]['improving']
+            elif st.get('avg', 0) < (0.3 if p == 'pca' else 1.0 if p == 'chlorophyll' else 1.5 if p == 'lai' else 25.0):
+                conclusions[p] = fb[p]['low']
+            else:
+                conclusions[p] = fb[p]['stable']
+            conclusions[p] = _clean_conclusion(conclusions[p])
+
+    return conclusions
+
 
 def generate_report_response(payload: dict):
     """Build and return the 2-page PDF report as a Flask response."""
@@ -3552,12 +4430,25 @@ def generate_report_response(payload: dict):
         language = "en"
     lang_strings = get_translations(language)
 
-    crop_name   = payload.get("crop_name", "Crop")
+    crop_name   = payload.get("crop_name", "Crop").split("/")[0].strip()
     aoi         = payload.get("aoi")
     aoi_coords  = None
     center_lat  = payload.get("centroid_lat")
     center_lon  = payload.get("centroid_lon")
     area_ha     = payload.get("area_ha") or 0
+    # Field details filled by user when saving the AOI
+    farmer_name   = payload.get("farmer_name") or payload.get("owner_name") or ""
+    field_name    = payload.get("field_name") or payload.get("aoi_name") or payload.get("name") or ""
+    village       = payload.get("village") or ""
+    taluka        = payload.get("taluka") or ""
+    district      = payload.get("district") or ""
+    state         = payload.get("state") or ""
+    crop_type     = payload.get("crop_type", "").split("/")[0].strip()
+    harvest_date  = payload.get("harvest_date") or ""
+    sowing_date   = payload.get("sowing_date") or ""
+    soil_type     = payload.get("soil_type") or ""
+    irrigation_type = payload.get("irrigation_type") or ""
+    field_notes   = payload.get("notes") or payload.get("remarks") or ""
     try:
         aoi_coords = aoi["geometry"]["coordinates"]
     except Exception:
@@ -3584,15 +4475,15 @@ def generate_report_response(payload: dict):
     metrics         = payload.get("metrics") or {}
     series          = payload.get("series") or []
 
-    # ── 15-day gap filtering ───────────────────────────────────────────────
-    # Apply rolling minimum-gap filter so that consecutive images used in the
-    # report are at least 15 days apart (greedy, Sentinel-2 anchored).
-    series = filter_series_to_15day_gap(series, min_gap_days=15)
+    # â”€â”€ 15-day sequential window filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Uses report start_date as the anchor. Creates 15-day fixed windows (e.g. Jan 1-15, Jan 16-30).
+    # Selects the best valid observation within each window, naturally matching the 15-day client requirement.
+    series = filter_series_to_15day_gap(series, start_date_str=start_date)
     # Extract the selected dates to pass to the deep-stats endpoint so it can
     # build its composite and per-image stats from the same set of images.
     selected_s2_dates = extract_s2_dates_from_series(series)
     logger.info(f"Selected S2 dates for report ({len(selected_s2_dates)}): {selected_s2_dates}")
-    # ──────────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     backend_url     = payload.get("backend_url") or os.environ.get("BACKEND_URL") or "http://localhost:6000"
     logo_path       = get_logo_path(payload.get("logo_path"))
 
@@ -3677,11 +4568,11 @@ def generate_report_response(payload: dict):
 
     story = []
 
-    # ══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     # PAGE 1 ‑ Header + AI Deep Summary
-    # ══════════════════════════════════════════════════════════════════
+    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    # ── Header table
+    # â”€â”€ Header table
     logo_img = None
     if logo_path and os.path.exists(logo_path):
         try:
@@ -3694,13 +4585,14 @@ def generate_report_response(payload: dict):
         except Exception:
             pass
 
-    header_left = logo_img or Paragraph("<b>KrishiZest</b>", ParagraphStyle("Logo", fontSize=14, fontName=pdf_font_bold, textColor=colors.HexColor("#2E7D32")))
+    header_left = logo_img or Paragraph("<b>KrishiZest</b>", ParagraphStyle("Logo", fontSize=16, fontName=pdf_font_bold, textColor=colors.HexColor("#2E7D32")))
     period_str   = f"{start_date}  →  {end_date}"
-    loc_str      = location_text or "—"
+    state_str    = state if state else "State not recorded"
+    
     header_right = Paragraph(
-        f"<b>{lang_strings.get('report_title', 'Precision Agriculture Report')}</b><br/>"
-        f"<font size='8'>{crop_name}  |  {period_str}  |  {loc_str}</font>",
-        ParagraphStyle("HdrRight", fontName=pdf_font_name, fontSize=10.5, leading=14, alignment=2, textColor=colors.HexColor("#212121"))
+        f"<b>{period_str}</b><br/>"
+        f"<font size='10'>{state_str}</font>",
+        ParagraphStyle("HdrRight", fontName=pdf_font_name, fontSize=11, leading=14, alignment=2, textColor=colors.HexColor("#212121"))
     )
 
     hdr_table = Table([[header_left, header_right]], colWidths=[W*0.35, W*0.65])
@@ -3709,64 +4601,88 @@ def generate_report_response(payload: dict):
         ('LINEBELOW', (0,0), (-1,0), 1.2, colors.HexColor("#2E7D32")), ('BOTTOMPADDING', (0,0), (-1,0), 6),
     ]))
     story.append(hdr_table)
-    story.append(Spacer(1, 2 if is_hi else 3))
+    story.append(Spacer(1, 3))
+    _fi_hdr_s = ParagraphStyle("FIHdr", fontName=pdf_font_bold, fontSize=8, leading=10, textColor=colors.white)
+    _fi_lbl_s = ParagraphStyle("FILbl", fontName=pdf_font_name, fontSize=7.5, leading=9.5, textColor=colors.HexColor("#212121"))
+    _fi_val_s = ParagraphStyle("FIVal", fontName=pdf_font_name, fontSize=7.5, leading=9.5, textColor=colors.HexColor("#212121"))
 
-    # ── Area & Location info bar ──────────────────────────────────────
-    info_style = ParagraphStyle(
-        "InfoCell",
-        fontName=pdf_font_name,
-        fontSize=8.5,
-        leading=12,
-        alignment=1,
-        textColor=colors.HexColor("#1B5E20"),
-    )
-    info_label_style = ParagraphStyle(
-        "InfoLabel",
-        fontName=pdf_font_bold,
-        fontSize=7,
-        leading=10,
-        alignment=1,
-        textColor=colors.HexColor("#4CAF50"),
-    )
+    field_name_disp = field_name if field_name else "Not recorded"
+    village_disp    = village if village else "Not recorded"
+    district_disp   = f"District: {district}" if district else "District: Not recorded"
+    state_disp      = state if state else "Not recorded"
 
-    loc_display   = location_text or u"\u2014"
-    area_display  = f"{area_ha:.4f} ha" if area_ha else u"\u2014"
+    if crop_type and crop_name:
+        crop_disp = f"Crop: {crop_name} ({crop_type})"
+    elif crop_name:
+        crop_disp = f"Crop: {crop_name}"
+    else:
+        crop_disp = "Crop: Not recorded"
+
+    if area_ha:
+        try:
+            area_flt = float(area_ha)
+            acre_flt = area_flt * 2.47105
+            area_disp = f"Area: {area_flt:.4f} ha (~{acre_flt:.2f} acre)"
+        except Exception:
+            area_disp = f"Area: {area_ha} ha"
+    else:
+        area_disp = "Area: Not recorded"
+
     if center_lat is not None and center_lon is not None:
         latdir = "N" if center_lat >= 0 else "S"
         londir = "E" if center_lon >= 0 else "W"
-        coord_display = f"{abs(center_lat):.5f}\u00b0{latdir},  {abs(center_lon):.5f}\u00b0{londir}"
+        coord_disp = f"{abs(center_lat):.5f}Â°{latdir}, {abs(center_lon):.5f}Â°{londir}"
     else:
-        coord_display = u"\u2014"
+        coord_disp = "Not recorded"
 
-    info_data = [[
-        Paragraph("LOCATION",   info_label_style),
-        Paragraph("AREA",       info_label_style),
-        Paragraph("COORDINATES", info_label_style),
-    ], [
-        Paragraph(loc_display,   info_style),
-        Paragraph(area_display,  info_style),
-        Paragraph(coord_display, info_style),
-    ]]
+    sowing_disp = f"Sowing Date: {sowing_date}" if sowing_date else "Sowing Date: Unclear"
 
-    info_table = Table(info_data, colWidths=[W * 0.45, W * 0.2, W * 0.35])
-    info_table.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, -1), colors.HexColor("#F1F8E9")),
-        ("BOX",           (0, 0), (-1, -1), 0.8, colors.HexColor("#4CAF50")),
-        ("INNERGRID",     (0, 0), (-1, -1), 0.5, colors.HexColor("#A5D6A7")),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+    finfo_data = [
+        [
+            Paragraph("<b>FIELD INFORMATION</b>", _fi_hdr_s),
+            "",
+            ""
+        ],
+        [
+            Paragraph("Field Name", _fi_lbl_s),
+            Paragraph(field_name_disp, _fi_val_s),
+            Paragraph(area_disp, _fi_val_s)
+        ],
+        [
+            Paragraph("Village", _fi_lbl_s),
+            Paragraph(village_disp, _fi_val_s),
+            Paragraph(district_disp, _fi_val_s)
+        ],
+        [
+            Paragraph("State", _fi_lbl_s),
+            Paragraph(state_disp, _fi_val_s),
+            Paragraph(crop_disp, _fi_val_s)
+        ],
+        [
+            Paragraph("Coordinates", _fi_lbl_s),
+            Paragraph(coord_disp, _fi_val_s),
+            Paragraph(sowing_disp, _fi_val_s)
+        ]
+    ]
+
+    finfo_table = Table(finfo_data, colWidths=[W * 0.25, W * 0.38, W * 0.37])
+    finfo_table.setStyle(TableStyle([
+        ('SPAN',          (0, 0), (2, 0)),
+        ('BACKGROUND',    (0, 0), (-1, 0), colors.HexColor("#2E7D32")),
+        ('BOX',           (0, 0), (-1, -1), 0.8, colors.HexColor("#2E7D32")),
+        ('INNERGRID',     (0, 0), (-1, -1), 0.5, colors.HexColor("#2E7D32")),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING',    (0, 0), (-1, -1), 2.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+        ('BACKGROUND',    (0, 1), (-1, -1), colors.HexColor("#FFFFFF")),
     ]))
-    story.append(info_table)
-    story.append(Spacer(1, 2 if is_hi else 5))
-    # ─────────────────────────────────────────────────────────────────
+    story.append(finfo_table)
+    story.append(Spacer(1, 10))
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    sum_title = lang_strings.get("field_intel_title", "Field Intelligence Analysis")
-    story.append(Paragraph(sum_title, ParagraphStyle("SumTitle", fontName=pdf_font_bold, fontSize=13, textColor=colors.HexColor("#2E7D32"), spaceAfter=3 if is_hi else 6, wordSelectMethod='shaping' if is_hi else 'default')))
-
-    # Fetch deep stats
+    # â”€â”€ 1. Fetch deep stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     deep_stats = {}
     if aoi:
         try:
@@ -3775,170 +4691,41 @@ def generate_report_response(payload: dict):
                 'start_date': start_date,
                 'end_date': end_date,
                 'scale': 10,
-                'selected_dates': selected_s2_dates,   # 15-day-gap selected images
+                'selected_dates': selected_s2_dates,
             }, timeout=180)
             if resp.status_code == 200:
                 deep_stats = resp.json()
                 logger.info(f"Deep stats keys: {list(deep_stats.keys())}")
-                logger.info(f"basic_stats: {deep_stats.get('basic_stats')}")
             else:
                 logger.error(f"Deep stats endpoint returned {resp.status_code}: {resp.text[:300]}")
         except Exception as e:
             logger.warning(f"Failed to fetch deep stats: {e}")
 
-    # Determine if deep stats are truly available (used to decide whether to show the 0–10 scale)
-    has_deep_stats = bool(deep_stats) and not deep_stats.get('error') and bool(deep_stats.get('basic_stats'))
-
-    ai_summary = generate_field_intelligence_summary(deep_stats, start_date, end_date, crop_name, location_text or "Field", language)
-    ai_blocks = [b for b in ai_summary.split("\n\n") if b.strip()][:10]
-    ai_paragraphs = [Paragraph(sanitize_html_for_reportlab(b), normal) for b in ai_blocks]
-
-    # ── Build AOI map buffer ──────────────────────────────────────────────
-    map_col_content = Paragraph("<i>Field map not available</i>", caption)
-    if aoi:
-        try:
-            map_buf = create_perfect_context_map(aoi, zoom=18, padding=150)
-            if map_buf:
-                pil_shot = PILImage.open(map_buf)
-                iw, ih = pil_shot.size
-                MAP_COL_W = W * 0.40           # 40% of page width for map column
-                TEXT_COL_W = W * 0.57          # 57% for text column (3% gutter)
-                max_map_h = 90 * mm            # generous vertical budget
-                mscale = min(MAP_COL_W / iw, max_map_h / ih)
-                map_buf.seek(0)
-                map_col_content = Image(map_buf, width=iw * mscale, height=ih * mscale)
-        except Exception as e:
-            logger.warning(f"AOI map failed: {e}")
-    else:
-        MAP_COL_W  = W * 0.40
-        TEXT_COL_W = W * 0.57
-
-    MAP_COL_W  = W * 0.40
-    TEXT_COL_W = W * 0.57
-
-    # ── Health scale widget (compact, fits in text column) ────────────────
-    health_scale_rows = None
-    if has_deep_stats:
-        weak_color     = colors.HexColor("#FFCDD2")
-        moderate_color = colors.HexColor("#FFF9C4")
-        strong_color   = colors.HexColor("#C8E6C9")
-        weak_high      = colors.HexColor("#EF9A9A")
-        moderate_high  = colors.HexColor("#FFF59D")
-        strong_high    = colors.HexColor("#A5D6A7")
-
-        legend_rows = [
-            [
-                Paragraph(lang_strings.get("health_weak",     "0–3<br/><i>Weak</i>"),     ParagraphStyle("LL", parent=normal, alignment=1, fontSize=8)),
-                Paragraph(lang_strings.get("health_moderate", "4–7<br/><i>Moderate</i>"), ParagraphStyle("LM", parent=normal, alignment=1, fontSize=8)),
-                Paragraph(lang_strings.get("health_strong",   "8–10<br/><i>Strong</i>"),  ParagraphStyle("LH", parent=normal, alignment=1, fontSize=8)),
-            ],
-            ["", "", ""],
-        ]
-        overall_score = None
-        try:
-            bs = deep_stats.get('basic_stats', {}) if deep_stats else {}
-            ch_mean = bs.get('CropHealth_mean')
-            if isinstance(ch_mean, (int, float)):
-                overall_score = max(0.0, min(10.0, round(float(ch_mean) * 10.0, 1)))
-        except Exception:
-            pass
-
-        marker_col = None
-        if overall_score is not None:
-            score_int = int(round(overall_score))
-            marker_col = 0 if score_int <= 3 else (1 if score_int <= 7 else 2)
-            legend_rows[1][marker_col] = Paragraph(str(score_int), ParagraphStyle("SI", parent=normal, alignment=1, fontSize=10))
-
-        col_w3 = TEXT_COL_W / 3.0
-        legend_table = Table(legend_rows, colWidths=[col_w3, col_w3, col_w3], rowHeights=[9*mm, 4*mm])
-        legend_cmds = [
-            ('BACKGROUND', (0,0),(0,0), weak_color),
-            ('BACKGROUND', (1,0),(1,0), moderate_color),
-            ('BACKGROUND', (2,0),(2,0), strong_color),
-            ('VALIGN',     (0,0),(-1,-1), 'MIDDLE'),
-            ('ALIGN',      (0,0),(-1,-1), 'CENTER'),
-            ('BOX',        (0,0),(-1,-1), 0.5, colors.grey),
-            ('INNERGRID',  (0,0),(-1,-1), 0.3, colors.grey),
-        ]
-        if marker_col is not None:
-            hi_colors = [weak_high, moderate_high, strong_high]
-            legend_cmds.append(('BACKGROUND', (marker_col,0),(marker_col,0), hi_colors[marker_col]))
-            legend_cmds.append(('BOX', (marker_col,0),(marker_col,1), 1.0, colors.black))
-        legend_table.setStyle(TableStyle(legend_cmds))
-        health_scale_rows = legend_table
-
-    # ── Assemble text column ──────────────────────────────────────────────
-    from reportlab.platypus import KeepInFrame
-
-    scale_title_p = Paragraph(
-        lang_strings.get("health_scale_title", "Overall Crop Health Scale (0–10)"),
-        ParagraphStyle("ScTitle", fontName=pdf_font_name, fontSize=8, leading=10,
-                       textColor=colors.HexColor("#2E7D32"), spaceAfter=2)
-    ) if has_deep_stats else None
-
-    map_title_p = Paragraph(
-        lang_strings.get("aoi_map_main_title", "Area of Interest Map"),
-        ParagraphStyle("MapTitleInner", fontName=pdf_font_bold, fontSize=9,
-                       textColor=colors.HexColor("#2E7D32"), alignment=1, spaceAfter=2)
-    )
-    map_subtitle_p = Paragraph(
-        lang_strings.get("aoi_map_subtitle", "Field boundary shown on satellite imagery."),
-        ParagraphStyle("MapSubInner", fontName=pdf_font_italic, fontSize=7,
-                       textColor=colors.grey, alignment=1, spaceAfter=4)
+    # 2. Generate structured farmer report sections via AI 
+    report_sections = generate_farmer_report_sections(
+        deep_stats=deep_stats,
+        series=series,
+        start_date=start_date,
+        end_date=end_date,
+        crop_name=crop_name,
+        field_name=field_name or location_text or "Field",
+        language=language,
     )
 
-    text_col_items = ai_paragraphs[:]
-    if has_deep_stats and scale_title_p:
-        text_col_items.append(Spacer(1, 3))
-        text_col_items.append(scale_title_p)
-        text_col_items.append(health_scale_rows)
-    text_col_items.append(Spacer(1, 4))
+    r_status        = report_sections['status']
+    r_status_color  = report_sections['status_color']
+    r_summary       = report_sections['season_summary']
+    r_what_happened = report_sections['what_happened']
+    r_key_findings  = report_sections['key_findings']
+    r_action_plan   = report_sections['action_plan']
+    r_map_desc      = report_sections['map_descriptions']
 
-    # Wrap text column in KeepInFrame so it never overflows
-    text_frame = KeepInFrame(
-        maxWidth=TEXT_COL_W,
-        maxHeight=105 * mm,
-        content=text_col_items,
-        mode='shrink',
-    )
-
-    map_frame_items = [map_title_p, map_subtitle_p, map_col_content]
-    map_frame = KeepInFrame(
-        maxWidth=MAP_COL_W,
-        maxHeight=105 * mm,
-        content=map_frame_items,
-        mode='shrink',
-    )
-
-    # ── 2-column table: [text | map] ──────────────────────────────────────
-    side_by_side = Table(
-        [[text_frame, map_frame]],
-        colWidths=[TEXT_COL_W, MAP_COL_W],
-    )
-    side_by_side.setStyle(TableStyle([
-        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
-        ('LEFTPADDING',  (0,0), (-1,-1), 0),
-        ('RIGHTPADDING', (0,0), (-1,-1), 0),
-        ('TOPPADDING',   (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING',(0,0), (-1,-1), 0),
-        ('LINEAFTER',    (0,0), (0,0), 0.5, colors.HexColor("#A5D6A7")),  # subtle divider
-    ]))
-    story.append(side_by_side)
-    story.append(Spacer(1, 4))
-
-    # ══════════════════════════════════════════════════════════════════
-    # Parameter Analysis Setup & Layout
-    # ══════════════════════════════════════════════════════════════════
-    ROW_H_P1   = 118 * mm  # Single row fills remaining Page 1 space (available ~124mm)
-    ROW_H_P2   = 78 * mm   # 3 rows × 78mm = 234mm, fills Page 2 (~240mm usable after title)
-    col_map_w = W * 0.48
-    col_chart_w = W * 0.52
-
-    MAP_PARAMS = [
-        ('pca',         'Crop Health',       'pca',          '#2E7D32', True),
-        ('chlorophyll', 'Chlorophyll',       'clre',         '#558B2F', True),
-        ('lai',         'Leaf Area Index',   'lai',          '#1565C0', True),
-        ('soilmoisture','Soil Moisture',     'soilmoisture', '#6A1B9A', False),
+    # 3. Fetch all 4 VRA maps in PARALLEL 
+    MAP_PARAMS = [  
+        ('pca',         'Overall Crop Condition',       True),
+        ('chlorophyll', 'Leaf Greenness',               True),
+        ('lai',         'Plant Cover and Crop Density', True),
+        ('soilmoisture','Available Soil Moisture',      False),
     ]
 
     import concurrent.futures
@@ -3949,169 +4736,440 @@ def generate_report_response(payload: dict):
             result = create_high_quality_vra_mosaic(
                 aoi, start_date, end_date, param,
                 backend_url=backend_url, final_size=1200,
-                force_sentinel2=s2_force
+                force_sentinel2=s2_force,
+                draw_aoi_outline=True
             )
             return param, result
         except Exception as e:
             logger.warning(f"Parallel VRA fetch failed for {param}: {e}")
             return param, None
 
-    # Fetch all 4 VRA maps in PARALLEL to avoid sequential blocking
     vra_results_map = {}
     if aoi:
-        logger.info("⚡ Launching parallel VRA map fetches...")
-        fetch_args = [(param, label, s2_force) for (param, label, chart_key, color, s2_force) in MAP_PARAMS]
+        logger.info("âš¡ Launching parallel VRA map fetches...")
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = {executor.submit(_fetch_vra, arg): arg[0] for arg in fetch_args}
+            futures = {executor.submit(_fetch_vra, arg): arg[0] for arg in MAP_PARAMS}
             for future in concurrent.futures.as_completed(futures):
                 param_key, vra_res = future.result()
                 vra_results_map[param_key] = vra_res
         logger.info("✅ All parallel VRA fetches complete.")
 
-    def _build_param_row(idx, param, label, chart_key, color, ROW_H):
-        """Build a single parameter row: [nested_table] with fixed height."""
-        map_u_str = lang_strings.get("map_unavailable", "Map unavailable")
-        map_cell  = Paragraph(f"<i>{map_u_str}</i>",
-                        ParagraphStyle("NoMap", fontSize=7, alignment=1, textColor=colors.grey))
+    # â”€â”€ 4. Build AOI context map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    map_col_content = Paragraph("<i>Field map not available</i>", caption)
+    MAP_COL_W  = W * 0.40
+    TEXT_COL_W = W * 0.57
+    if aoi:
+        try:
+            map_buf = create_perfect_context_map(aoi, zoom=18, padding=150)
+            if map_buf:
+                pil_shot = PILImage.open(map_buf)
+                iw, ih = pil_shot.size
+                max_map_h = 70 * mm
+                mscale = min(MAP_COL_W / iw, max_map_h / ih)
+                map_buf.seek(0)
+                map_col_content = Image(map_buf, width=iw * mscale, height=ih * mscale)
+        except Exception as e:
+            logger.warning(f"AOI map failed: {e}")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # PAGE 1 — SEASONAL FIELD SUMMARY
+    # ──────────────────────────────────────────────────────────────────────────
+
+    # ── Style helpers ─────────────────────────────────────────────────────────
+    _sec_title  = ParagraphStyle("SecTitle",  fontName=pdf_font_bold,  fontSize=10,  leading=13,
+                                  textColor=colors.HexColor("#2E7D32"), spaceBefore=6, spaceAfter=3)
+    _body_small = ParagraphStyle("BodySmall", fontName=pdf_font_name,  fontSize=8.2, leading=11,
+                                  textColor=colors.HexColor("#212121"), spaceAfter=2,
+                                  wordSelectMethod='shaping' if is_hi else 'default')
+    _tbl_hdr    = ParagraphStyle("TblHdr",    fontName=pdf_font_bold,  fontSize=8,   leading=10,
+                                  textColor=colors.white)
+    _tbl_cell   = ParagraphStyle("TblCell",   fontName=pdf_font_name,  fontSize=7.8, leading=10,
+                                  textColor=colors.HexColor("#212121"),
+                                  wordSelectMethod='shaping' if is_hi else 'default')
+    _bullet_s   = ParagraphStyle("BulletS",   fontName=pdf_font_name,  fontSize=8.2, leading=11,
+                                  leftIndent=10, firstLineIndent=-8, spaceAfter=2,
+                                  wordSelectMethod='shaping' if is_hi else 'default')
+
+    GREEN_DARK  = colors.HexColor("#2E7D32")
+    GREEN_LIGHT = colors.HexColor("#E8F5E9")
+    GREEN_MID   = colors.HexColor("#A5D6A7")
+    GREY_BG     = colors.HexColor("#F5F5F5")
+    BORDER_COL  = colors.HexColor("#C8E6C9")
+
+    # ── 4a. Status box + AOI map side by side ─────────────────────────────────
+    status_bg   = colors.HexColor(r_status_color)
+    status_para = Paragraph(
+        f"<b>{r_status}</b>",
+        ParagraphStyle("StatusLbl", fontName=pdf_font_bold, fontSize=14, leading=17,
+                       textColor=colors.white, alignment=1)
+    )
+
+    summary_para = Paragraph(
+        r_summary,
+        ParagraphStyle("Summary", fontName=pdf_font_name, fontSize=8.5, leading=12,
+                       textColor=colors.HexColor("#212121"), spaceAfter=4,
+                       wordSelectMethod='shaping' if is_hi else 'default')
+    )
+
+    # Status box: colored box (top) + summary text (below)
+    status_box_data = [
+        [status_para],
+        [summary_para],
+    ]
+    status_box = Table(status_box_data, colWidths=[TEXT_COL_W])
+    status_box.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (0,0), status_bg),
+        ('BACKGROUND',    (0,1), (0,1), GREEN_LIGHT),
+        ('TOPPADDING',    (0,0), (0,0), 8),
+        ('BOTTOMPADDING', (0,0), (0,0), 8),
+        ('TOPPADDING',    (0,1), (0,1), 6),
+        ('BOTTOMPADDING', (0,1), (0,1), 6),
+        ('LEFTPADDING',   (0,0), (-1,-1), 8),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 8),
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('BOX',           (0,0), (-1,-1), 1.0, status_bg),
+    ]))
+
+    sec1_title = Paragraph("1. SEASON SUMMARY" if not is_hi else "1. मौसमी सारांश", _sec_title)
+
+    # AOI map column
+    map_title_p = Paragraph(
+        "Area of Interest Map" if not is_hi else "खेत का उपग्रह नक्शा",
+        ParagraphStyle("MapTitleP", fontName=pdf_font_bold, fontSize=10,
+                       textColor=GREEN_DARK, alignment=1, spaceAfter=3)
+    )
+
+    from reportlab.platypus import KeepInFrame
+    text_col_items = [sec1_title, Spacer(1, 4), status_box]
+    text_frame = KeepInFrame(maxWidth=TEXT_COL_W, maxHeight=75 * mm,
+                              content=text_col_items, mode='shrink')
+    map_frame_items = [map_title_p, Spacer(1, 3), map_col_content]
+    map_frame = KeepInFrame(maxWidth=MAP_COL_W, maxHeight=75 * mm,
+                             content=map_frame_items, mode='shrink')
+
+    summary_row = Table([[text_frame, map_frame]], colWidths=[TEXT_COL_W, MAP_COL_W])
+    summary_row.setStyle(TableStyle([
+        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING',  (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (0,0),   8),
+        ('RIGHTPADDING', (1,0), (1,0),   0),
+        ('TOPPADDING',   (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 0),
+    ]))
+    story.append(summary_row)
+    story.append(Spacer(1, 6))
+
+    # ── 4b. What Happened During the Season table ─────────────────────────────
+    story.append(Paragraph("2. WHAT HAPPENED DURING THE SEASON" if not is_hi else "2. सीजन के दौरान क्या हुआ", _sec_title))
+
+    wh_header = [
+        Paragraph("Season Stage" if not is_hi else "सीजन चरण",        _tbl_hdr),
+        Paragraph("Field Condition" if not is_hi else "खेत की स्थिति",     _tbl_hdr),
+        Paragraph("Simple Interpretation" if not is_hi else "सरल व्याख्या", _tbl_hdr),
+    ]
+    wh_data = [wh_header]
+    for row in r_what_happened:
+        stage, condition, interpretation = (row + ["", "", ""])[:3]
+        wh_data.append([
+            Paragraph(stage,          _tbl_cell),
+            Paragraph(condition,      _tbl_cell),
+            Paragraph(interpretation, _tbl_cell),
+        ])
+
+    wh_col_w = [W * 0.22, W * 0.39, W * 0.39]
+    wh_table = Table(wh_data, colWidths=wh_col_w)
+    wh_table.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,0),  GREEN_DARK),
+        ('BACKGROUND',    (0,1), (-1,-1), GREEN_LIGHT),
+        ('ROWBACKGROUNDS',(0,1), (-1,-1), [GREEN_LIGHT, colors.white]),
+        ('INNERGRID',     (0,0), (-1,-1), 0.4, BORDER_COL),
+        ('BOX',           (0,0), (-1,-1), 0.8, GREEN_DARK),
+        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING',    (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING',   (0,0), (-1,-1), 5),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+    ]))
+    story.append(wh_table)
+    story.append(Spacer(1, 6))
+
+    # â”€â”€ 4c. Key Seasonal Findings bullets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    story.append(Paragraph("3. KEY SEASONAL FINDINGS", _sec_title))
+    for finding in r_key_findings[:5]:
+        story.append(Paragraph(f"• {finding}", _bullet_s))
+    story.append(Spacer(1, 4))
+
+    # â”€â”€ 4d. Next Season Action Plan table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    story.append(Paragraph("4. NEXT SEASON ACTION PLAN", _sec_title))
+
+    ap_header = [
+        Paragraph("Priority", _tbl_hdr),
+        Paragraph("Action",   _tbl_hdr),
+        Paragraph("When to do it", _tbl_hdr),
+    ]
+    ap_data = [ap_header]
+
+    _priority_colors = {
+        "High":   colors.HexColor("#FFEBEE"),
+        "Medium": colors.HexColor("#FFF8E1"),
+        "Low":    colors.HexColor("#E8F5E9"),
+    }
+    _priority_text_colors = {
+        "High":   colors.HexColor("#B71C1C"),
+        "Medium": colors.HexColor("#E65100"),
+        "Low":    colors.HexColor("#1B5E20"),
+    }
+
+    for row in r_action_plan[:6]:
+        priority, action, when = (row + ["", "", ""])[:3]
+        tc = _priority_text_colors.get(priority, colors.HexColor("#212121"))
+        ap_data.append([
+            Paragraph(f"<b>{priority}</b>",
+                      ParagraphStyle("PriorityCell", fontName=pdf_font_bold, fontSize=7.8,
+                                     leading=10, textColor=tc, alignment=1)),
+            Paragraph(action, _tbl_cell),
+            Paragraph(when,   _tbl_cell),
+        ])
+
+    ap_col_w = [W * 0.14, W * 0.56, W * 0.30]
+    ap_table = Table(ap_data, colWidths=ap_col_w)
+
+    ap_cmds = [
+        ('BACKGROUND',    (0,0), (-1,0),  GREEN_DARK),
+        ('INNERGRID',     (0,0), (-1,-1), 0.4, BORDER_COL),
+        ('BOX',           (0,0), (-1,-1), 0.8, GREEN_DARK),
+        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING',    (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING',   (0,0), (-1,-1), 5),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+        ('ALIGN',         (0,1), (0,-1),  'CENTER'),
+    ]
+    # Row-wise background colors
+    for row_idx, row in enumerate(r_action_plan[:6], start=1):
+        priority = (row + ["", "", ""])[:3][0]
+        row_bg = _priority_colors.get(priority, colors.white)
+        ap_cmds.append(('BACKGROUND', (0, row_idx), (-1, row_idx), row_bg))
+
+    ap_table.setStyle(TableStyle(ap_cmds))
+    story.append(ap_table)
+
+    # â”€â”€ PAGE BREAK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    story.append(PageBreak())
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # PAGE 2 — FIELD CONDITION MAPS (2Ã—2 grid) + FPO + Disclaimer
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    story.append(Paragraph(
+        "Field Condition Maps",
+        ParagraphStyle("MapPageTitle", fontName=pdf_font_bold, fontSize=12,
+                       textColor=GREEN_DARK, alignment=1, spaceAfter=4)
+    ))
+    story.append(Paragraph(
+        "These maps show relative variation within the field during the season. "
+        "Use them to decide where the field should receive more attention.",
+        ParagraphStyle("MapPageSubtitle", fontName=pdf_font_name, fontSize=8,
+                       leading=11, textColor=colors.HexColor("#555555"), alignment=1, spaceAfter=6)
+    ))
+
+    # Map metadata
+    _map_meta = [
+        {
+            'param':       'pca',
+            'legend_param': 'pca',
+            'label':       'Overall Crop Condition',
+            'key':         'crop_health',
+        },
+        {
+            'param':       'chlorophyll',
+            'legend_param': 'chlorophyll',
+            'label':       'Leaf Greenness',
+            'key':         'leaf_greenness',
+        },
+        {
+            'param':       'lai',
+            'legend_param': 'lai',
+            'label':       'Plant Cover and Crop Density',
+            'key':         'plant_cover',
+        },
+        {
+            'param':       'soilmoisture',
+            'legend_param': 'soilmoisture',
+            'label':       'Available Soil Moisture',
+            'key':         'soil_moisture',
+        },
+    ]
+
+    CELL_W   = W / 2.0 - 3 * mm   # two columns with small gutter
+    IMG_H    = 63 * mm              # max image height per cell
+    DESC_H   = 22 * mm              # description text height per cell
+
+    _map_title_s = ParagraphStyle("MapCellTitle", fontName=pdf_font_bold, fontSize=8.5,
+                                   leading=10.5, textColor=GREEN_DARK, alignment=1, spaceAfter=2)
+    _map_desc_s  = ParagraphStyle("MapCellDesc",  fontName=pdf_font_name, fontSize=7.2,
+                                   leading=9.2, textColor=colors.HexColor("#333333"), spaceAfter=1,
+                                   wordSelectMethod='shaping' if is_hi else 'default')
+    _map_do_s    = ParagraphStyle("MapCellDo",    fontName=pdf_font_bold, fontSize=7.2,
+                                   leading=9.2, textColor=colors.HexColor("#1B5E20"),
+                                   wordSelectMethod='shaping' if is_hi else 'default')
+
+    def _build_map_cell(meta):
+        """Build a single map cell for the 2x2 grid."""
+        param        = meta['param']
+        legend_param = meta['legend_param']
+        label        = meta['label']
+        desc_key     = meta['key']
+
+        # Map image
+        map_img = Paragraph(f"<i>{label} map not available</i>",
+                             ParagraphStyle("NoMapCell", fontSize=7, alignment=1, textColor=colors.grey))
+        has_map = False
         if aoi:
             try:
                 vra_result = vra_results_map.get(param)
-                tile_buf = vra_result[0] if vra_result and len(vra_result) >= 3 else None
-                vra_data = vra_result[1] if vra_result and len(vra_result) >= 3 else None
-                zoom = vra_result[2] if vra_result and len(vra_result) >= 3 else 15
+                tile_buf   = vra_result[0] if vra_result and len(vra_result) >= 3 else None
+                vra_data   = vra_result[1] if vra_result and len(vra_result) >= 3 else None
+                zoom_lvl   = vra_result[2] if vra_result and len(vra_result) >= 3 else 15
                 if tile_buf:
                     pil = PILImage.open(tile_buf)
-                    styled = add_vra_legend(pil, param, vra_data, label, aoi=aoi, zoom_level=zoom)
+                    styled = add_vra_legend(pil, legend_param, vra_data, label, aoi=aoi, zoom_level=zoom_lvl)
                     sbuf = BytesIO()
                     styled.save(sbuf, format='PNG', optimize=True)
                     sbuf.seek(0)
                     iw, ih = styled.size
-                    avail_w = col_map_w - 2 * mm
-                    avail_h = ROW_H - 10 * mm   # 10mm for label row (6mm) + padding
-                    scale = min(avail_w / iw, avail_h / ih)
-                    map_cell = Image(sbuf, width=iw * scale, height=ih * scale)
-                else:
-                    # No map returned — build a parameter-specific informative message
-                    if param == 'chlorophyll':
-                        info_msg = lang_strings.get("chlorophyll_na_msg") or "Chlorophyll map unavailable"
-                    else:
-                        info_msg = f"<i>{label} {map_u_str}</i>"
-                    
-                    map_cell = Paragraph(info_msg,
-                        ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
-                                       textColor=colors.HexColor("#555555"), leading=11, spaceAfter=4,
-                                       wordSelectMethod='shaping' if is_hi else 'default'))
+                    avail_w = CELL_W - 4 * mm
+                    scale = min(avail_w / iw, IMG_H / ih)
+                    map_img = Image(sbuf, width=iw * scale, height=ih * scale)
+                    has_map = True
             except Exception as e:
-                logger.warning(f"Map failed for {param}: {e}")
-                if param == 'chlorophyll':
-                    map_cell = Paragraph(
-                        lang_strings.get("chlorophyll_short_na") or "Chlorophyll map unavailable",
-                        ParagraphStyle("NoMapInfo", fontSize=7.5, alignment=1,
-                                       textColor=colors.HexColor("#555555"), leading=11,
-                                       wordSelectMethod='shaping' if is_hi else 'default'))
+                logger.warning(f"Map cell build failed for {param}: {e}")
 
-        # 2. Chart Image
-        chart_buf = io.BytesIO()
-        _render_single_param_chart(series, chart_buf, chart_key, label, color)
-        chart_buf.seek(0)
+        if has_map:
+            what_shows = r_map_desc.get(desc_key, {}).get('what_shows', '')
+            what_to_do = r_map_desc.get(desc_key, {}).get('what_to_do', '')
+            lbl_shows = "What this map shows:" if not is_hi else "यह नक्शा क्या दिखाता है:"
+            lbl_do = "What to do:" if not is_hi else "क्या करें:"
+            cell_data = [
+                [Paragraph(label, _map_title_s)],
+                [map_img],
+                [Paragraph(f"<b>{lbl_shows}</b> {what_shows}", _map_desc_s)],
+                [Paragraph(f"<b>{lbl_do}</b> {what_to_do}", _map_do_s)],
+            ]
+        else:
+            no_data_msg = (
+                "No satellite observation data was available for this layer during the selected period."
+                if not is_hi else
+                "चयनित अवधि के दौरान इस परत के लिए कोई उपग्रह डेटा उपलब्ध नहीं था।"
+            )
+            cell_data = [
+                [Paragraph(label, _map_title_s)],
+                [map_img],
+                [Paragraph(f"<i>{no_data_msg}</i>", _map_desc_s)],
+            ]
 
-        # Read actual chart pixel size and fit to cell
-        chart_pil = PILImage.open(chart_buf)
-        cw, ch = chart_pil.size
-        avail_w = col_chart_w - 4 * mm
-        avail_h = ROW_H - 12 * mm
-        cscale  = min(avail_w / cw, avail_h / ch)
-        chart_buf.seek(0)
-        chart_cell = Image(chart_buf, width=cw * cscale, height=ch * cscale)
-
-        # ── Label row + content row ───────────────────────────────────────
-        label_para = Paragraph(
-            f"<b>{label}</b>",
-            ParagraphStyle("ParamLbl", fontName="Helvetica-Bold", fontSize=8,
-                           alignment=0, textColor=colors.HexColor("#1B5E20"))
-        )
-        # Each parameter = 2 sub-rows: [label spanning both cols] + [map | chart]
-        # Encode as single row with nested table for precise sizing
-        inner = Table(
-            [[label_para, ""], [map_cell, chart_cell]],
-            colWidths=[col_map_w, col_chart_w],
-            rowHeights=[6 * mm, ROW_H - 6 * mm],
-        )
-        inner.setStyle(TableStyle([
-            ('SPAN',          (0, 0), (1, 0)),
-            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
-            ('TOPPADDING',    (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        cell_table = Table(cell_data, colWidths=[CELL_W])
+        cell_table.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (0,0), GREEN_LIGHT),
+            ('BACKGROUND',    (0,2), (0,-1), colors.white),
+            ('BOX',           (0,0), (-1,-1), 0.8, BORDER_COL),
+            ('LINEBELOW',     (0,0), (0,0), 0.5, GREEN_MID),
+            ('ALIGN',         (0,0), (-1,-1), 'CENTER'),
+            ('ALIGN',         (0,2), (0,-1), 'LEFT'),
+            ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+            ('VALIGN',        (0,2), (0,-1), 'TOP'),
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 4),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 4),
         ]))
-        return inner
+        return cell_table
 
-    # ══════════════════════════════════════════════════════════════════════
-    # PAGE 1 TAIL — "Detailed Parameter Analysis" title + first param row
-    # ══════════════════════════════════════════════════════════════════════
+    # Build all 4 map cells and arrange in 2x2 grid
+    cells = [_build_map_cell(m) for m in _map_meta]
+
+    row1 = Table([[cells[0], cells[1]]], colWidths=[CELL_W + 3*mm, CELL_W + 3*mm])
+    row1.setStyle(TableStyle([
+        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING',  (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (0,0), 4),
+        ('RIGHTPADDING', (1,0), (1,0), 0),
+        ('TOPPADDING',   (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 4),
+    ]))
+    row2 = Table([[cells[2], cells[3]]], colWidths=[CELL_W + 3*mm, CELL_W + 3*mm])
+    row2.setStyle(TableStyle([
+        ('VALIGN',       (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING',  (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (0,0), 4),
+        ('RIGHTPADDING', (1,0), (1,0), 0),
+        ('TOPPADDING',   (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 0),
+    ]))
+    story.append(row1)
+    story.append(row2)
+    story.append(Spacer(1, 6))
+
+    # ── Legend Bar Guide Box ──────────────────────────────────────────────────
+    leg_guide_text = (
+        "<b>Legend Bar Guide:</b> All condition maps above use a relative 5-level classification from <b>Highest</b> (darkest shade) to <b>Lowest</b> (lightest pale shade). Darker areas indicate stronger crop vigor or higher moisture. Zones marked as <b>Low</b> or <b>Lowest</b> indicate field areas lagging behind and should be prioritized for ground inspection."
+        if not is_hi else
+        "<b>लीजेंड बार गाइड:</b> ऊपर दिए गए सभी नक्शे <b>Highest</b> (गहरा रंग) से <b>Lowest</b> (हल्का रंग) तक 5-स्तरीय वर्गीकरण का उपयोग करते हैं। गहरे रंग के क्षेत्र बेहतर फसल या अधिक नमी दर्शाते हैं। <b>Low</b> या <b>Lowest</b> चिन्हित क्षेत्र कमजोर वृद्धि दर्शाते हैं और स्थलीय निरीक्षण के लिए प्राथमिकता दिए जाने चाहिए।"
+    )
+    leg_box = Table([[Paragraph(leg_guide_text, ParagraphStyle(
+        "LegGuide", fontName=pdf_font_name, fontSize=7.5, leading=10.5,
+        textColor=colors.HexColor("#1B5E20"),
+        wordSelectMethod='shaping' if is_hi else 'default'
+    ))]], colWidths=[W])
+    leg_box.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), GREEN_LIGHT),
+        ('BOX',           (0,0), (-1,-1), 0.6, GREEN_MID),
+        ('TOPPADDING',    (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING',   (0,0), (-1,-1), 6),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 6),
+    ]))
+    story.append(leg_box)
+    story.append(Spacer(1, 6))
+
+    # ── Important Note ────────────────────────────────────────────────────────
+    note_text = (
+        "<b>Important Note</b><br/>"
+        "This report is based on satellite observations and is intended to help identify areas that may need "
+        "attention. Field inspection, soil testing, and advice from a qualified agriculture expert may be "
+        "required to confirm the exact cause and decide the suitable treatment."
+        if not is_hi else
+        "<b>महत्वपूर्ण सूचना</b><br/>"
+        "यह रिपोर्ट उपग्रह अवलोकनों पर आधारित है और उन क्षेत्रों की पहचान करने में मदद करती है जहां ध्यान देने की आवश्यकता हो सकती है। "
+        "सटीक कारण की पुष्टि करने और उपयुक्त उपचार तय करने के लिए खेत का निरीक्षण, मिट्टी परीक्षण और योग्य कृषि विशेषज्ञ की सलाह आवश्यक हो सकती है।"
+    )
+    note_box_data = [[Paragraph(
+        note_text,
+        ParagraphStyle("ImpNote", fontName=pdf_font_name, fontSize=7.5, leading=11,
+                       textColor=colors.HexColor("#333333"),
+                       wordSelectMethod='shaping' if is_hi else 'default')
+    )]]
+    note_box = Table(note_box_data, colWidths=[W])
+    note_box.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), colors.HexColor("#FFF9C4")),
+        ('BOX',           (0,0), (-1,-1), 0.8, colors.HexColor("#F57F17")),
+        ('TOPPADDING',    (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING',   (0,0), (-1,-1), 8),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 8),
+    ]))
+    story.append(note_box)
     story.append(Spacer(1, 4))
-    story.append(Paragraph(
-        "Detailed Parameter Analysis",
-        ParagraphStyle("P1ParamTitle", fontName="Helvetica-Bold", fontSize=11,
-                       textColor=colors.HexColor("#2E7D32"), spaceAfter=3, alignment=1)
-    ))
 
-    # Build first parameter row (Crop Health) with Page-1 row height
-    first_row = _build_param_row(0, *MAP_PARAMS[0][:4], ROW_H_P1)
-    p1_table = Table([[first_row]], colWidths=[W], rowHeights=[ROW_H_P1])
-    p1_table.setStyle(TableStyle([
-        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING',    (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-        ('LEFTPADDING',   (0,0), (-1,-1), 0),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
-    ]))
-    story.append(p1_table)
+    def _draw_page(canvas, doc):
+        """Footer only — the story already renders the header table as content."""
+        draw_footer(canvas, doc)
 
-    # ══════════════════════════════════════════════════════════════════════
-    # PAGE 2 — Remaining 3 parameter rows
-    # ══════════════════════════════════════════════════════════════════════
-    story.append(PageBreak())
-
-    # story.append(Paragraph(
-    #     "Detailed Parameter Analysis (continued)",
-    #     ParagraphStyle("P2Title", fontName="Helvetica-Bold", fontSize=12,
-    #                    textColor=colors.HexColor("#2E7D32"), spaceAfter=4, alignment=1)
-    # ))
-
-    remaining_params = MAP_PARAMS[1:]
-    table_data  = []
-    row_heights = []
-    for idx, (param, label, chart_key, color, s2_force) in enumerate(remaining_params, start=1):
-        row = _build_param_row(idx, param, label, chart_key, color, ROW_H_P2)
-        table_data.append([row])
-        row_heights.append(ROW_H_P2)
-
-    outer = Table(table_data, colWidths=[W], rowHeights=row_heights)
-    outer.setStyle(TableStyle([
-        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING',    (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-        ('LEFTPADDING',   (0,0), (-1,-1), 0),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
-        ('LINEBELOW', (0,0), (-1, len(remaining_params)-2), 0.5, colors.HexColor("#C8E6C9")),
-    ]))
-    story.append(outer)
-
-
-    # ── Build PDF ─────────────────────────────────────────────────────
-    location_text_safe = location_text or "Field"
-    draw_header = make_draw_header(location_text_safe, location_text_safe,
-                                   left_title=lang_strings.get('report_title'),
-                                   crop_name=crop_name,
-                                   report_date=datetime.utcnow().strftime("%Y-%m-%d"))
-
-    doc.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
+    doc.build(story, onFirstPage=_draw_page, onLaterPages=_draw_page)
     buffer.seek(0)
     return send_file(
         buffer,
-        mimetype="application/pdf",         
+        mimetype="application/pdf",
         as_attachment=True,
         download_name=f"KrishiZest_Report_{start_date}_{end_date}.pdf",
     )
-

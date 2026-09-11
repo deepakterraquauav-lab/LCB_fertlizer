@@ -1328,7 +1328,7 @@ def get_gee_tile():
                         logger.info("Using median composite (fallback due to error)")
                     
                     # SMAP might need different palette/range? 0-100 is target for both.
-                    vis_params = {'min': 0, 'max': 100, 'palette': ['brown', 'yellow', 'lightgreen', 'darkgreen', 'blue']}
+                    vis_params = {'min': 0, 'max': 100, 'palette': ['#dadaeb', '#bcbddc', '#9e9ac8', '#756bb1', '#54278f']}
                 else:
                     logger.error("Soil moisture collection is empty")
                     return jsonify({'error': 'No soil moisture data'}), 404
@@ -1446,14 +1446,13 @@ def classify_with_jenks(image, band_name, aoi, n_classes=5, scale=30):
         method = "Jenks"
 
         # DECISION LOGIC:
-        # If very few unique values, just map them
         unique_vals = np.unique(val_array)
-        if len(unique_vals) < n_classes:
-             method = "Unique"
-             # Just use equal interval between min and max to ensure 5 zones exist theoretically
-             # or better, just map the unique values to classes? 
-             # User wants 5 zones. Let's stick to Breaks.
-             # If we have fewer values than classes, breaks will duplicate.
+        
+        if band_name == 'SoilMoisture':
+            method = "Fixed Thresholds (25% Cutoff)"
+            breaks = [0.0, 15.0, 25.0, 35.0, 45.0, max(100.0, float(val_max))]
+            
+        elif len(unique_vals) < n_classes:
              # Fallback to Linear (Equal Interval)
              method = "Linear (Low Unique Count)"
              breaks = np.linspace(val_min, val_max, n_classes + 1).tolist()
@@ -1542,10 +1541,10 @@ def classify_with_jenks(image, band_name, aoi, n_classes=5, scale=30):
 VRA_COLOR_SCHEMES = {
     'ndvi': ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b'],  # Light to dark green
     'savi': ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b'],  # Light to dark green
-    'lai': ['#c7e9c0', '#a1d99b', '#74c476', '#238b45', '#00441b'],   # Light to dark green
+    'lai': ['#d9f0a3', '#a1d99b', '#41ab5d', '#238b45', '#005a32'],   # Distinct canopy gradient (Yellow-green to lush dark forest)
     'cwsi': ['#81D4FA', '#4FC3F7', '#FFFF8D', '#FFB74D', '#E57373'],  # Lighter Tones: Light Blue -> Light Orange -> Light Red
     'irrigation_need': ['#f7fbff', '#c6dbef', '#6baed6', '#2171b5', '#08306b'],  # Light to dark blue
-    'soilmoisture': ['#f7fbff', '#c6dbef', '#6baed6', '#2171b5', '#08306b'],  # Light to dark blue
+    'soilmoisture': ['#dadaeb', '#bcbddc', '#9e9ac8', '#756bb1', '#54278f'],  # Light purple to dark purple
     'lst': ['#ffffcc', '#ffeda0', '#feb24c', '#f03b20', '#bd0026'],  # Yellow to red
     'etc': ['#f7fcfd', '#c6dbef', '#9e9ac8', '#756bb1', '#54278f'],  # Light purple to dark purple
     'kc': ['#FFFFE5', '#D9F0A3', '#78C679', '#238443', '#004529'],   # Yellow (Low) to Green (High)

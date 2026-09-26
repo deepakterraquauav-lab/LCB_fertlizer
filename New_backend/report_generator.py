@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
 import io
 import logging
 import os
@@ -1525,7 +1525,7 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
             'lst': ['#bd0026', '#f03b20', '#feb24c', '#ffeda0', '#ffffcc'],
             'etc': ['#54278f', '#756bb1', '#9e9ac8', '#c6dbef', '#f7fcfd'],
             'chlorophyll': ['#2e6b2d', '#4d9c44', '#7bbf6a', '#a8d5a2', '#d0f0c0'],
-            'lai': ['#005a32', '#238b45', '#41ab5d', '#a1d99b', '#d9f0a3']
+            'lai': ['#00441b', '#238b45', '#74c476', '#a1d99b', '#c7e9c0']
         }
         
         # EXACT LABELS FROM REACT CODE (High to Low)
@@ -1583,14 +1583,17 @@ def add_vra_legend(mosaic_pil: PILImage.Image, parameter: str, vra_data: Optiona
         paste_y = padding
         new_img.paste(mosaic_pil, (paste_x, paste_y))
         
-        # Load fonts
+        # Load fonts - dynamic label size so labels don't collide under zone blocks
         font_paths = [
             "arial.ttf", "Arial.ttf", "arialbd.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "C:\\Windows\\Fonts\\arial.ttf", "C:\\Windows\\Fonts\\arialbd.ttf"
         ]
         
-        label_size = 140
+        legend_width = int(mosaic_w * 0.80)
+        num_zones = len(colors)
+        zone_w = legend_width // num_zones
+        label_size = max(55, min(90, int(zone_w * 0.44)))
         stats_size = 22
         title_size = 26
         
@@ -3616,10 +3619,10 @@ def generate_farmer_report_sections(deep_stats: dict, series: list, start_date: 
     if score_10 is None:
         status        = "Needs attention"
         status_color  = "#B0BEC5"   # grey — no data
-    elif score_10 <= 3:
+    elif score_10 < 3.3:
         status        = "Needs attention"
         status_color  = "#D32F2F"   # red
-    elif score_10 <= 7:
+    elif score_10 <= 6.7:
         status        = "Average performance"
         status_color  = "#F57C00"   # orange
     else:
@@ -3627,27 +3630,44 @@ def generate_farmer_report_sections(deep_stats: dict, series: list, start_date: 
         status_color  = "#2E7D32"   # green
 
     # Build temporal summary for AI
+    # Build stage-specific temporal breakdown for AI
     temporal_lines = []
-    if temporal_stats:
-        n   = len(temporal_stats)
-        idx_early = 0
-        idx_mid   = n // 2
-        idx_end   = n - 1
-        for i, label in [(idx_early, "Early season"), (idx_mid, "Middle of season"), (idx_end, "End of season")]:
-            ts = temporal_stats[i]
-            d  = ts.get('date', 'N/A')
-            st = ts.get('stats', {})
-            ch = st.get('CropHealth_mean')
-            la = st.get('LAI_mean')
-            cl = st.get('CIre_mean')
-            sm_vals = [r.get('soilmoisture') or r.get('soilmoisture_mm') for r in series if r.get('date', '') >= d]
-            temporal_lines.append(
-                f"  {label} (around {d}): "
-                f"CropHealth={'good' if ch and ch > 0.5 else 'low'}, "
-                f"PlantCover={'dense' if la and la > 2 else 'sparse'}, "
-                f"Greenness={'strong' if cl and cl > 0.1 else 'weak'}"
-            )
-    temporal_summary = "\n".join(temporal_lines) if temporal_lines else "  Temporal breakdown not available."
+    if series and len(series) >= 3:
+        n = len(series)
+        early_slice = series[:max(1, n // 3)]
+        mid_slice   = series[max(1, n // 3) : max(2, 2 * n // 3)]
+        end_slice   = series[max(2, 2 * n // 3):]
+
+        def _slice_summary(slc, stage_name, phase_desc):
+            dates = [r.get('date', '') for r in slc if r.get('date')]
+            d_str = f"({dates[0]} to {dates[-1]})" if len(dates) >= 2 else (f"({dates[0]})" if dates else "")
+            ndvis = [float(r.get('ndvi') or 0) for r in slc if r.get('ndvi') is not None]
+            avg_ndvi = sum(ndvis) / len(ndvis) if ndvis else None
+            lais = [float(r.get('lai') or 0) for r in slc if r.get('lai') is not None]
+            avg_lai = sum(lais) / len(lais) if lais else None
+            c_desc = 'healthy early vigor' if avg_ndvi and avg_ndvi > 0.5 else 'slow initial emergence'
+            if 'mid' in stage_name.lower():
+                c_desc = 'peak vegetative vigor' if avg_ndvi and avg_ndvi > 0.55 else 'moderate canopy vigor with uneven spots'
+            elif 'end' in stage_name.lower():
+                c_desc = 'maturation and grain filling' if avg_ndvi and avg_ndvi > 0.45 else 'late-season senescence and dry-down'
+            cov_desc = 'dense canopy' if avg_lai and avg_lai > 2.2 else 'moderate canopy' if avg_lai and avg_lai > 1.2 else 'sparse/thin cover'
+            return f"  - {stage_name} {d_str} [{phase_desc}]: Crop Condition was {c_desc}, Plant Cover was {cov_desc}."
+
+        temporal_lines.append(_slice_summary(early_slice, "Early season", "Germination & Emergence"))
+        temporal_lines.append(_slice_summary(mid_slice, "Middle of season", "Peak Vegetative Growth & Canopy Spread"))
+        temporal_lines.append(_slice_summary(end_slice, "End of season", "Maturation, Grain-Filling & Senescence"))
+    elif temporal_stats:
+        n = len(temporal_stats)
+        idx_early, idx_mid, idx_end = 0, n // 2, n - 1
+        t_e, t_m, t_end = temporal_stats[idx_early], temporal_stats[idx_mid], temporal_stats[idx_end]
+        temporal_lines.append(f"  - Early season ({t_e.get('date', 'Early')}): Initial seedling emergence and establishment after sowing.")
+        temporal_lines.append(f"  - Middle of season ({t_m.get('date', 'Mid')}): Active vegetative growth and peak canopy spread across the field.")
+        temporal_lines.append(f"  - End of season ({t_end.get('date', 'End')}): Maturation, grain filling, and harvest readiness.")
+    else:
+        temporal_lines.append("  - Early season: Sowing, germination, and early seedling emergence.")
+        temporal_lines.append("  - Middle of season: Vegetative growth, branching/tillering, and canopy expansion.")
+        temporal_lines.append("  - End of season: Maturation, grain filling, and natural leaf dry-down.")
+    temporal_summary = "\n".join(temporal_lines)
 
     # Compute average soil moisture for data-driven summary
     sm_list = []
@@ -3687,6 +3707,11 @@ IMPORTANT RULES:
    - ABSOLUTELY NEVER mention red, yellow, orange, or blue. These colors are NOT in the maps.
    - Describe what the maps show by referencing the legend bar ("Highest" down to "Lowest") and the color tones.
    - The action in "What to do" (MAP_*_DO) must directly reference the lagging zones from "What this map shows" (MAP_*_SHOWS) — e.g. ground inspection of 'Low' or 'Lowest' zones on the legend bar to verify soil, nutrient, or water issues.
+7. WHAT_HAPPENED RULES (CRITICAL - NO REPETITION):
+   - Early season row MUST describe seedling emergence and initial ground cover establishment after sowing.
+   - Middle of season row MUST describe active vegetative growth, peak canopy spread, flowering, and any mid-season stress or uneven growth.
+   - End of season row MUST describe crop maturation, grain filling, natural drying-down (senescence) of leaves, and harvest readiness.
+   - STRICT PROHIBITION: DO NOT repeat the same sentence or same phrase across the 3 rows. Each of the 3 rows MUST describe a completely different life cycle phase!
 
 FIELD DATA (reference only — do NOT repeat raw numbers):
 - Crop: {crop_name}
@@ -3697,7 +3722,7 @@ FIELD DATA (reference only — do NOT repeat raw numbers):
 - Plant Cover & Crop Density: {p_struct}% moderate canopy coverage
 - Available Soil Moisture: {sm_summary} across root zone
 - Overall seasonal status: {status}
-- Seasonal pattern:
+- Crop Life Cycle Stages:
 {temporal_summary}
 
 OUTPUT FORMAT — follow EXACTLY, including section headers with colons:
@@ -3706,9 +3731,9 @@ SEASON_SUMMARY:
 [Write 50–70 words. Plain language. Explain how the crop performed during this season. Use "Satellite observations suggest..." style. Do not use technical terms.]
 
 WHAT_HAPPENED:
-Early season | [1 short sentence about early condition] | [1 simple interpretation]
-Middle of season | [1 short sentence about mid-season condition] | [1 simple interpretation]
-End of season | [1 short sentence about end condition] | [1 simple interpretation]
+Early season | [1 short sentence on seedling emergence & early ground cover] | [1 simple interpretation of early establishment]
+Middle of season | [1 short sentence on mid-season canopy growth & peak vigor] | [1 simple interpretation of mid-season development]
+End of season | [1 short sentence on crop maturation & pre-harvest condition] | [1 simple interpretation of harvest readiness]
 
 KEY_FINDINGS:
 [Overall crop condition finding — 1 sentence]
@@ -3718,11 +3743,11 @@ KEY_FINDINGS:
 [Uneven field performance observation — 1 sentence, mention if some areas are better/worse]
 
 ACTION_PLAN:
-High | [urgent practical action] | [timing — e.g. "Before next sowing"]
-High | [another urgent action] | [timing]
-Medium | [moderate priority action] | [timing]
-Medium | [another medium action] | [timing]
-Low | [low priority action] | [timing]
+High | [urgent practical action — max 10–12 words, crisp and direct] | [timing — e.g. "Before next sowing"]
+High | [another urgent action — max 10–12 words] | [timing]
+Medium | [moderate priority action — max 10–12 words] | [timing]
+Medium | [another medium action — max 10–12 words] | [timing]
+Low | [low priority action — max 10–12 words] | [timing]
 
 MAP_CROP_HEALTH_SHOWS: [20–35 words describing what the Overall Crop Condition map shows using the legend bar ("Highest" to "Lowest") and green tones. Dark green = 'Highest'/'High', pale green = 'Low'/'Lowest'. Do NOT mention red or yellow.]
 MAP_CROP_HEALTH_DO: [15–25 words describing one practical action directly targeting the 'Low' and 'Lowest' zones identified on the map — e.g. inspect roots and soil in 'Low' and 'Lowest' zones.]
@@ -3848,10 +3873,24 @@ MAP_SOIL_MOISTURE_DO: [15–25 words describing one practical action targeting '
             what_happened.append(parts[:3])
     if not what_happened:
         what_happened = [
-            ["Early season",      "Crop established after sowing.", "Satellite observations suggest initial growth."],
-            ["Middle of season",  "Field showed variable performance.", "Some areas responded better than others."],
-            ["End of season",     "Overall condition weakened.", "A field visit is recommended to assess causes."],
+            ["Early season",      "Crop established after sowing with initial seedling emergence.", "Satellite observations suggest initial early growth and ground cover."],
+            ["Middle of season",  "Field developed towards peak vegetative canopy with variable vigor.", "Some field zones maintained good growth while others showed slower coverage."],
+            ["End of season",     "Crop reached maturity and grain-filling stage as harvest approached.", "Natural late-season maturation and dry-down reflected earlier growth differences."],
         ]
+    elif len(what_happened) >= 3:
+        # Check if rows are identical or near-identical copies
+        c0 = what_happened[0][1].strip().lower()
+        c1 = what_happened[1][1].strip().lower()
+        c2 = what_happened[2][1].strip().lower()
+        if c0 == c1 or c1 == c2 or c0 == c2:
+            if language == "hi":
+                what_happened[0] = ["Early season", "बुवाई के बाद फसल का प्रारंभिक अंकुरण और जमाव शुरू हुआ।", "शुरुआती चरण में पौधों की स्थापना और पत्तों का हरापन देखा गया।"]
+                what_happened[1] = ["Middle of season", "वानस्पतिक वृद्धि के दौरान फसल का फैलाव हुआ लेकिन विभिन्न क्षेत्रों में असमानता दिखी।", "सक्रिय विकास के समय कुछ हिस्सों में अच्छी वृद्धि रही जबकि कमजोर हिस्सों में तनाव रहा।"]
+                what_happened[2] = ["End of season", "फसल परिपक्वता और दाना भरने की अवस्था में पहुंची और कटाई के लिए तैयार हुई।", "अंतिम अवस्था में पत्तों का स्वाभाविक पीलापन और पकाई देखी गई।"]
+            else:
+                what_happened[0] = ["Early season", "Initial seedling emergence and early ground coverage began after sowing.", "Early vegetative establishment showed healthy initial leaf development."]
+                what_happened[1] = ["Middle of season", "Canopy expanded towards peak growth, with noticeable variation across field zones.", "Stronger zones maintained active vigor while lagging areas showed limited coverage."]
+                what_happened[2] = ["End of season", "Crop reached maturity and grain-filling stage as harvest approached.", "Natural leaf senescence and maturation reflected earlier seasonal growth patterns."]
 
     key_findings_raw = _extract_block(raw_text, 'KEY_FINDINGS')
     key_findings = [f.lstrip('•-').strip() for f in key_findings_raw if f.strip() and not f.strip().startswith('KEY_FINDINGS')]
@@ -4014,7 +4053,7 @@ def create_perfect_context_map(aoi, zoom=18, padding=150):
             for ty in range(tile_min_y, tile_max_y + 1):
                 url = f"https://mt1.google.com/vt/lyrs=s&x={tx}&y={ty}&z={zoom}"
                 try:
-                    r = requests.get(url, headers=headers, timeout=10)
+                    r = requests.get(url, headers=headers, timeout=20)
                     if r.status_code == 200:
                         tile_img = PILImage.open(io.BytesIO(r.content)).convert('RGB')
                         px = (tx - tile_min_x) * 256
@@ -4568,11 +4607,9 @@ def generate_report_response(payload: dict):
 
     story = []
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    # PAGE 1 ‑ Header + AI Deep Summary
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ── Header + AI Deep Summary ──────────────────────────────────────────
 
-    # â”€â”€ Header table
+    # ── Header table
     logo_img = None
     if logo_path and os.path.exists(logo_path):
         try:
@@ -4631,7 +4668,7 @@ def generate_report_response(payload: dict):
     if center_lat is not None and center_lon is not None:
         latdir = "N" if center_lat >= 0 else "S"
         londir = "E" if center_lon >= 0 else "W"
-        coord_disp = f"{abs(center_lat):.5f}Â°{latdir}, {abs(center_lon):.5f}Â°{londir}"
+        coord_disp = f"{abs(center_lat):.5f}° {latdir}, {abs(center_lon):.5f}° {londir}"
     else:
         coord_disp = "Not recorded"
 
@@ -4672,8 +4709,8 @@ def generate_report_response(payload: dict):
         ('BOX',           (0, 0), (-1, -1), 0.8, colors.HexColor("#2E7D32")),
         ('INNERGRID',     (0, 0), (-1, -1), 0.5, colors.HexColor("#2E7D32")),
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING',    (0, 0), (-1, -1), 2.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+        ('TOPPADDING',    (0, 0), (-1, -1), 3.2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3.2),
         ('LEFTPADDING',   (0, 0), (-1, -1), 6),
         ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
         ('BACKGROUND',    (0, 1), (-1, -1), colors.HexColor("#FFFFFF")),
@@ -4776,18 +4813,18 @@ def generate_report_response(payload: dict):
     # ──────────────────────────────────────────────────────────────────────────
 
     # ── Style helpers ─────────────────────────────────────────────────────────
-    _sec_title  = ParagraphStyle("SecTitle",  fontName=pdf_font_bold,  fontSize=10,  leading=13,
+    _sec_title  = ParagraphStyle("SecTitle",  fontName=pdf_font_bold,  fontSize=9.8,  leading=12.2,
                                   textColor=colors.HexColor("#2E7D32"), spaceBefore=6, spaceAfter=3)
     _body_small = ParagraphStyle("BodySmall", fontName=pdf_font_name,  fontSize=8.2, leading=11,
                                   textColor=colors.HexColor("#212121"), spaceAfter=2,
                                   wordSelectMethod='shaping' if is_hi else 'default')
-    _tbl_hdr    = ParagraphStyle("TblHdr",    fontName=pdf_font_bold,  fontSize=8,   leading=10,
+    _tbl_hdr    = ParagraphStyle("TblHdr",    fontName=pdf_font_bold,  fontSize=8.2,   leading=10.5,
                                   textColor=colors.white)
-    _tbl_cell   = ParagraphStyle("TblCell",   fontName=pdf_font_name,  fontSize=7.8, leading=10,
+    _tbl_cell   = ParagraphStyle("TblCell",   fontName=pdf_font_name,  fontSize=8.0, leading=10.8,
                                   textColor=colors.HexColor("#212121"),
                                   wordSelectMethod='shaping' if is_hi else 'default')
-    _bullet_s   = ParagraphStyle("BulletS",   fontName=pdf_font_name,  fontSize=8.2, leading=11,
-                                  leftIndent=10, firstLineIndent=-8, spaceAfter=2,
+    _bullet_s   = ParagraphStyle("BulletS",   fontName=pdf_font_name,  fontSize=8.2, leading=11.0,
+                                  leftIndent=10, firstLineIndent=-8, spaceAfter=3.5,
                                   wordSelectMethod='shaping' if is_hi else 'default')
 
     GREEN_DARK  = colors.HexColor("#2E7D32")
@@ -4806,7 +4843,7 @@ def generate_report_response(payload: dict):
 
     summary_para = Paragraph(
         r_summary,
-        ParagraphStyle("Summary", fontName=pdf_font_name, fontSize=8.5, leading=12,
+        ParagraphStyle("Summary", fontName=pdf_font_name, fontSize=8.8, leading=12.5,
                        textColor=colors.HexColor("#212121"), spaceAfter=4,
                        wordSelectMethod='shaping' if is_hi else 'default')
     )
@@ -4820,8 +4857,8 @@ def generate_report_response(payload: dict):
     status_box.setStyle(TableStyle([
         ('BACKGROUND',    (0,0), (0,0), status_bg),
         ('BACKGROUND',    (0,1), (0,1), GREEN_LIGHT),
-        ('TOPPADDING',    (0,0), (0,0), 8),
-        ('BOTTOMPADDING', (0,0), (0,0), 8),
+        ('TOPPADDING',    (0,0), (0,0), 7),
+        ('BOTTOMPADDING', (0,0), (0,0), 7),
         ('TOPPADDING',    (0,1), (0,1), 6),
         ('BOTTOMPADDING', (0,1), (0,1), 6),
         ('LEFTPADDING',   (0,0), (-1,-1), 8),
@@ -4829,6 +4866,133 @@ def generate_report_response(payload: dict):
         ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
         ('BOX',           (0,0), (-1,-1), 1.0, status_bg),
     ]))
+
+    # ── Crop Health Score (0-10 Scale) ────────────────────────────────────────
+    overall_score = report_sections.get('score_10')
+    if overall_score is None:
+        try:
+            bs = deep_stats.get('basic_stats', {}) if deep_stats else {}
+            ch_mean = bs.get('CropHealth_mean')
+            if ch_mean is not None and isinstance(ch_mean, (int, float)):
+                overall_score = round(float(ch_mean) * 10.0, 1) if float(ch_mean) <= 1.0 else round(float(ch_mean), 1)
+            elif metrics and isinstance(metrics, dict) and 'pca' in metrics:
+                pca_mean = metrics['pca'].get('mean')
+                if pca_mean is not None and isinstance(pca_mean, (int, float)):
+                    overall_score = round(float(pca_mean) * 10.0, 1) if float(pca_mean) <= 1.0 else round(float(pca_mean), 1)
+            elif series:
+                valid_pcas = [s.get('pca') for s in series if s.get('pca') is not None and isinstance(s.get('pca'), (int, float))]
+                if valid_pcas:
+                    avg_pca = sum(valid_pcas) / len(valid_pcas)
+                    overall_score = round(avg_pca * 10.0, 1) if avg_pca <= 1.0 else round(avg_pca, 1)
+        except Exception as e:
+            logger.warning(f"Error calculating overall_score: {e}")
+            overall_score = None
+
+    if overall_score is None:
+        status_l = r_status.lower()
+        if "attention" in status_l or "alert" in status_l:
+            overall_score = 2.4
+        elif "fair" in status_l or "moderate" in status_l or "average" in status_l:
+            overall_score = 5.0
+        else:
+            overall_score = 8.0
+    else:
+        overall_score = max(0.0, min(10.0, float(overall_score)))
+
+    # Synchronized exactly with status banner thresholds (< 3.3, 3.3–6.7, > 6.7)
+    if overall_score < 3.3:
+        marker_col = 0
+        score_status_color = "#D32F2F"
+    elif overall_score <= 6.7:
+        marker_col = 1
+        score_status_color = "#F57C00"
+    else:
+        marker_col = 2
+        score_status_color = "#2E7D32"
+
+    class GaugeNeedle(Flowable):
+        def __init__(self, score, width, color='#D32F2F', font_name='Helvetica-Bold'):
+            super().__init__()
+            self.score = max(0.0, min(10.0, float(score)))
+            self.width = width
+            self.height = 14
+            self.color = colors.HexColor(color)
+            self.font_name = font_name
+
+        def draw(self):
+            c = self.canv
+            pct = self.score / 10.0
+            x = pct * self.width
+            x = max(10, min(self.width - 10, x))
+
+            # Upward pointer triangle
+            p = c.beginPath()
+            p.moveTo(x, 12)
+            p.lineTo(x - 3.5, 6)
+            p.lineTo(x + 3.5, 6)
+            p.close()
+            c.setFillColor(self.color)
+            c.setStrokeColor(self.color)
+            c.drawPath(p, fill=1, stroke=0)
+
+            # Numeric score text under triangle
+            c.setFont(self.font_name, 7.5)
+            c.drawCentredString(x, -2, f"{self.score:.1f}")
+
+    scale_title_text = (
+        f"<b>Overall Crop Health Gauge (0–10):</b> &nbsp; Score <b><font color='{score_status_color}'>{overall_score:.1f} / 10</font></b>"
+        if not is_hi else
+        f"<b>समग्र फसल स्वास्थ्य गेज (0–10):</b> &nbsp; स्कोर <b><font color='{score_status_color}'>{overall_score:.1f} / 10</font></b>"
+    )
+    scale_title_p = Paragraph(scale_title_text, ParagraphStyle(
+        "ScaleTitle", fontName=pdf_font_name, fontSize=7.8, leading=10.0,
+        textColor=GREEN_DARK, spaceAfter=2.5,
+        wordSelectMethod='shaping' if is_hi else 'default'
+    ))
+
+    w_needs = "<b>Needs Attention</b><br/><font size=5.5 color='#555555'>0 – 3.3</font>" if not is_hi else "<b>ध्यान देने योग्य</b><br/><font size=5.5 color='#555555'>0 – 3.3</font>"
+    w_avg   = "<b>Average</b><br/><font size=5.5 color='#555555'>3.3 – 6.7</font>" if not is_hi else "<b>औसत</b><br/><font size=5.5 color='#555555'>3.3 – 6.7</font>"
+    w_good  = "<b>Good</b><br/><font size=5.5 color='#555555'>6.7 – 10</font>" if not is_hi else "<b>अच्छा</b><br/><font size=5.5 color='#555555'>6.7 – 10</font>"
+
+    leg_cell_s = ParagraphStyle("LegCell", fontName=pdf_font_name, fontSize=7.0, leading=8.6, alignment=1,
+                                textColor=colors.HexColor("#424242"),
+                                wordSelectMethod='shaping' if is_hi else 'default')
+    leg_cell_act = ParagraphStyle("LegCellAct", fontName=pdf_font_bold, fontSize=7.2, leading=8.8, alignment=1,
+                                  textColor=colors.HexColor(score_status_color),
+                                  wordSelectMethod='shaping' if is_hi else 'default')
+
+    row1_cells = [
+        Paragraph(w_needs, leg_cell_act if marker_col == 0 else leg_cell_s),
+        Paragraph(w_avg,   leg_cell_act if marker_col == 1 else leg_cell_s),
+        Paragraph(w_good,  leg_cell_act if marker_col == 2 else leg_cell_s),
+    ]
+
+    # Perfectly symmetrical widths: exactly 3 equal parts (33.33% each)
+    w_third = TEXT_COL_W / 3.0
+    scale_table = Table([row1_cells], colWidths=[w_third, w_third, w_third])
+    scale_cmds = [
+        ('BACKGROUND', (0, 0), (0, 0), colors.HexColor("#FFCDD2")),
+        ('BACKGROUND', (1, 0), (1, 0), colors.HexColor("#FFE082")),
+        ('BACKGROUND', (2, 0), (2, 0), colors.HexColor("#C8E6C9")),
+        ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN',      (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+        ('BOX',        (0, 0), (-1, -1), 0.7, colors.HexColor("#B0BEC5")),
+        ('INNERGRID',  (0, 0), (-1, -1), 0.5, colors.white),
+    ]
+    if marker_col == 0:
+        scale_cmds.append(('BACKGROUND', (0, 0), (0, 0), colors.HexColor("#EF9A9A")))
+        scale_cmds.append(('BOX', (0, 0), (0, 0), 1.2, colors.HexColor("#C62828")))
+    elif marker_col == 1:
+        scale_cmds.append(('BACKGROUND', (1, 0), (1, 0), colors.HexColor("#FFD54F")))
+        scale_cmds.append(('BOX', (1, 0), (1, 0), 1.2, colors.HexColor("#F57F17")))
+    else:
+        scale_cmds.append(('BACKGROUND', (2, 0), (2, 0), colors.HexColor("#A5D6A7")))
+        scale_cmds.append(('BOX', (2, 0), (2, 0), 1.2, colors.HexColor("#2E7D32")))
+
+    scale_table.setStyle(TableStyle(scale_cmds))
+    needle_flowable = GaugeNeedle(overall_score, TEXT_COL_W, color=score_status_color, font_name=pdf_font_bold)
 
     sec1_title = Paragraph("1. SEASON SUMMARY" if not is_hi else "1. मौसमी सारांश", _sec_title)
 
@@ -4840,11 +5004,11 @@ def generate_report_response(payload: dict):
     )
 
     from reportlab.platypus import KeepInFrame
-    text_col_items = [sec1_title, Spacer(1, 4), status_box]
-    text_frame = KeepInFrame(maxWidth=TEXT_COL_W, maxHeight=75 * mm,
+    text_col_items = [sec1_title, Spacer(1, 3), status_box, Spacer(1, 6), scale_title_p, scale_table, needle_flowable]
+    text_frame = KeepInFrame(maxWidth=TEXT_COL_W, maxHeight=78 * mm,
                               content=text_col_items, mode='shrink')
     map_frame_items = [map_title_p, Spacer(1, 3), map_col_content]
-    map_frame = KeepInFrame(maxWidth=MAP_COL_W, maxHeight=75 * mm,
+    map_frame = KeepInFrame(maxWidth=MAP_COL_W, maxHeight=78 * mm,
                              content=map_frame_items, mode='shrink')
 
     summary_row = Table([[text_frame, map_frame]], colWidths=[TEXT_COL_W, MAP_COL_W])
@@ -4857,7 +5021,7 @@ def generate_report_response(payload: dict):
         ('BOTTOMPADDING',(0,0), (-1,-1), 0),
     ]))
     story.append(summary_row)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
     # ── 4b. What Happened During the Season table ─────────────────────────────
     story.append(Paragraph("2. WHAT HAPPENED DURING THE SEASON" if not is_hi else "2. सीजन के दौरान क्या हुआ", _sec_title))
@@ -4884,22 +5048,22 @@ def generate_report_response(payload: dict):
         ('ROWBACKGROUNDS',(0,1), (-1,-1), [GREEN_LIGHT, colors.white]),
         ('INNERGRID',     (0,0), (-1,-1), 0.4, BORDER_COL),
         ('BOX',           (0,0), (-1,-1), 0.8, GREEN_DARK),
-        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING',    (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('LEFTPADDING',   (0,0), (-1,-1), 5),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',    (0,0), (-1,-1), 3.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
+        ('LEFTPADDING',   (0,0), (-1,-1), 6),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 6),
     ]))
     story.append(wh_table)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 5))
 
-    # â”€â”€ 4c. Key Seasonal Findings bullets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── 4c. Key Seasonal Findings bullets ─────────────────────────────────────
     story.append(Paragraph("3. KEY SEASONAL FINDINGS", _sec_title))
     for finding in r_key_findings[:5]:
         story.append(Paragraph(f"• {finding}", _bullet_s))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 5))
 
-    # â”€â”€ 4d. Next Season Action Plan table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── 4d. Next Season Action Plan table ─────────────────────────────────────
     story.append(Paragraph("4. NEXT SEASON ACTION PLAN", _sec_title))
 
     ap_header = [
@@ -4925,24 +5089,24 @@ def generate_report_response(payload: dict):
         tc = _priority_text_colors.get(priority, colors.HexColor("#212121"))
         ap_data.append([
             Paragraph(f"<b>{priority}</b>",
-                      ParagraphStyle("PriorityCell", fontName=pdf_font_bold, fontSize=7.8,
-                                     leading=10, textColor=tc, alignment=1)),
+                      ParagraphStyle("PriorityCell", fontName=pdf_font_bold, fontSize=8.0,
+                                     leading=10.0, textColor=tc, alignment=1)),
             Paragraph(action, _tbl_cell),
             Paragraph(when,   _tbl_cell),
         ])
 
-    ap_col_w = [W * 0.14, W * 0.56, W * 0.30]
+    ap_col_w = [W * 0.13, W * 0.65, W * 0.22]
     ap_table = Table(ap_data, colWidths=ap_col_w)
 
     ap_cmds = [
         ('BACKGROUND',    (0,0), (-1,0),  GREEN_DARK),
         ('INNERGRID',     (0,0), (-1,-1), 0.4, BORDER_COL),
         ('BOX',           (0,0), (-1,-1), 0.8, GREEN_DARK),
-        ('VALIGN',        (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING',    (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('LEFTPADDING',   (0,0), (-1,-1), 5),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',    (0,0), (-1,-1), 3.2),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3.2),
+        ('LEFTPADDING',   (0,0), (-1,-1), 6),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 6),
         ('ALIGN',         (0,1), (0,-1),  'CENTER'),
     ]
     # Row-wise background colors
@@ -4957,7 +5121,6 @@ def generate_report_response(payload: dict):
     # â”€â”€ PAGE BREAK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     story.append(PageBreak())
 
-    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # PAGE 2 — FIELD CONDITION MAPS (2Ã—2 grid) + FPO + Disclaimer
     # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -5002,16 +5165,16 @@ def generate_report_response(payload: dict):
     ]
 
     CELL_W   = W / 2.0 - 3 * mm   # two columns with small gutter
-    IMG_H    = 63 * mm              # max image height per cell
+    IMG_H    = 67 * mm              # max image height per cell
     DESC_H   = 22 * mm              # description text height per cell
 
-    _map_title_s = ParagraphStyle("MapCellTitle", fontName=pdf_font_bold, fontSize=8.5,
-                                   leading=10.5, textColor=GREEN_DARK, alignment=1, spaceAfter=2)
-    _map_desc_s  = ParagraphStyle("MapCellDesc",  fontName=pdf_font_name, fontSize=7.2,
-                                   leading=9.2, textColor=colors.HexColor("#333333"), spaceAfter=1,
+    _map_title_s = ParagraphStyle("MapCellTitle", fontName=pdf_font_bold, fontSize=8.8,
+                                   leading=11.0, textColor=GREEN_DARK, alignment=1, spaceAfter=2)
+    _map_desc_s  = ParagraphStyle("MapCellDesc",  fontName=pdf_font_name, fontSize=7.4,
+                                   leading=9.6, textColor=colors.HexColor("#333333"), spaceAfter=1,
                                    wordSelectMethod='shaping' if is_hi else 'default')
-    _map_do_s    = ParagraphStyle("MapCellDo",    fontName=pdf_font_bold, fontSize=7.2,
-                                   leading=9.2, textColor=colors.HexColor("#1B5E20"),
+    _map_do_s    = ParagraphStyle("MapCellDo",    fontName=pdf_font_bold, fontSize=7.4,
+                                   leading=9.6, textColor=colors.HexColor("#1B5E20"),
                                    wordSelectMethod='shaping' if is_hi else 'default')
 
     def _build_map_cell(meta):
@@ -5078,10 +5241,10 @@ def generate_report_response(payload: dict):
             ('ALIGN',         (0,2), (0,-1), 'LEFT'),
             ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
             ('VALIGN',        (0,2), (0,-1), 'TOP'),
-            ('TOPPADDING',    (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-            ('LEFTPADDING',   (0,0), (-1,-1), 4),
-            ('RIGHTPADDING',  (0,0), (-1,-1), 4),
+            ('TOPPADDING',    (0,0), (-1,-1), 4.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4.5),
+            ('LEFTPADDING',   (0,0), (-1,-1), 5),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 5),
         ]))
         return cell_table
 
@@ -5108,7 +5271,7 @@ def generate_report_response(payload: dict):
     ]))
     story.append(row1)
     story.append(row2)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 8))
 
     # ── Legend Bar Guide Box ──────────────────────────────────────────────────
     leg_guide_text = (
@@ -5117,20 +5280,20 @@ def generate_report_response(payload: dict):
         "<b>लीजेंड बार गाइड:</b> ऊपर दिए गए सभी नक्शे <b>Highest</b> (गहरा रंग) से <b>Lowest</b> (हल्का रंग) तक 5-स्तरीय वर्गीकरण का उपयोग करते हैं। गहरे रंग के क्षेत्र बेहतर फसल या अधिक नमी दर्शाते हैं। <b>Low</b> या <b>Lowest</b> चिन्हित क्षेत्र कमजोर वृद्धि दर्शाते हैं और स्थलीय निरीक्षण के लिए प्राथमिकता दिए जाने चाहिए।"
     )
     leg_box = Table([[Paragraph(leg_guide_text, ParagraphStyle(
-        "LegGuide", fontName=pdf_font_name, fontSize=7.5, leading=10.5,
+        "LegGuide", fontName=pdf_font_name, fontSize=7.6, leading=10.8,
         textColor=colors.HexColor("#1B5E20"),
         wordSelectMethod='shaping' if is_hi else 'default'
     ))]], colWidths=[W])
     leg_box.setStyle(TableStyle([
         ('BACKGROUND',    (0,0), (-1,-1), GREEN_LIGHT),
         ('BOX',           (0,0), (-1,-1), 0.6, GREEN_MID),
-        ('TOPPADDING',    (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('LEFTPADDING',   (0,0), (-1,-1), 6),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 6),
+        ('TOPPADDING',    (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING',   (0,0), (-1,-1), 7),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 7),
     ]))
     story.append(leg_box)
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 8))
 
     # ── Important Note ────────────────────────────────────────────────────────
     note_text = (
@@ -5145,7 +5308,7 @@ def generate_report_response(payload: dict):
     )
     note_box_data = [[Paragraph(
         note_text,
-        ParagraphStyle("ImpNote", fontName=pdf_font_name, fontSize=7.5, leading=11,
+        ParagraphStyle("ImpNote", fontName=pdf_font_name, fontSize=7.6, leading=11.2,
                        textColor=colors.HexColor("#333333"),
                        wordSelectMethod='shaping' if is_hi else 'default')
     )]]
@@ -5153,8 +5316,8 @@ def generate_report_response(payload: dict):
     note_box.setStyle(TableStyle([
         ('BACKGROUND',    (0,0), (-1,-1), colors.HexColor("#FFF9C4")),
         ('BOX',           (0,0), (-1,-1), 0.8, colors.HexColor("#F57F17")),
-        ('TOPPADDING',    (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING',    (0,0), (-1,-1), 6.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6.5),
         ('LEFTPADDING',   (0,0), (-1,-1), 8),
         ('RIGHTPADDING',  (0,0), (-1,-1), 8),
     ]))

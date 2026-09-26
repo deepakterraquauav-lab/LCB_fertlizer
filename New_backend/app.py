@@ -1541,7 +1541,7 @@ def classify_with_jenks(image, band_name, aoi, n_classes=5, scale=30):
 VRA_COLOR_SCHEMES = {
     'ndvi': ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b'],  # Light to dark green
     'savi': ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b'],  # Light to dark green
-    'lai': ['#d9f0a3', '#a1d99b', '#41ab5d', '#238b45', '#005a32'],   # Distinct canopy gradient (Yellow-green to lush dark forest)
+    'lai': ['#c7e9c0', '#a1d99b', '#74c476', '#238b45', '#00441b'],   # Light to dark green
     'cwsi': ['#81D4FA', '#4FC3F7', '#FFFF8D', '#FFB74D', '#E57373'],  # Lighter Tones: Light Blue -> Light Orange -> Light Red
     'irrigation_need': ['#f7fbff', '#c6dbef', '#6baed6', '#2171b5', '#08306b'],  # Light to dark blue
     'soilmoisture': ['#dadaeb', '#bcbddc', '#9e9ac8', '#756bb1', '#54278f'],  # Light purple to dark purple

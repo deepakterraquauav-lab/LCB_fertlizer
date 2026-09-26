@@ -165,6 +165,9 @@ function AppContent() {
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonLayers, setComparisonLayers] = useState([]);
 
+  // Field metadata state for report generation
+  const [activeFieldDetails, setActiveFieldDetails] = useState(null);
+
   // Load field from URL if present
   useEffect(() => {
     async function loadField() {
@@ -204,6 +207,7 @@ function AppContent() {
               properties: { name: field.name, type: field.type }
             };
             setDrawnAOI(feature);
+            setActiveFieldDetails(field);
             Swal.close();
           } else {
             Swal.fire({
@@ -932,7 +936,14 @@ function AppContent() {
         irrigation_summary: currentCalendar?.summary || {},
         metrics: computedMetrics,
         language: language || 'en',
-        crop_name: 'General Crop',
+        crop_type: activeFieldDetails?.cropType || activeFieldDetails?.type || '',
+        crop_name: activeFieldDetails?.cropName || activeFieldDetails?.type || 'General Crop',
+        field_name: activeFieldDetails?.name || '',
+        village: activeFieldDetails?.village || '',
+        district: activeFieldDetails?.district || '',
+        state: activeFieldDetails?.state || '',
+        sowing_date: activeFieldDetails?.sowingDate || '',
+        harvest_date: activeFieldDetails?.harvestDate || '',
         area_ha: areaHa,
         centroid_lat: centroidLat,
         centroid_lon: centroidLon,
@@ -1028,8 +1039,8 @@ function AppContent() {
             {showBaselineWarning && (
               <div className="react-baseline-alert-overlay">
                 <div className="react-baseline-alert-card">
-                  <button 
-                    className="close-btn" 
+                  <button
+                    className="close-btn"
                     onClick={() => setShowBaselineWarning(false)}
                     aria-label="Close warning"
                   >

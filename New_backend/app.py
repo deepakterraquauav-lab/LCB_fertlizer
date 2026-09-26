@@ -55,7 +55,11 @@ load_dotenv()
 # Firebase Initialization
 try:
     if not firebase_admin._apps:
-        cred = firebase_credentials.Certificate('karshizest-a7b3c3acdeee.json')
+        if os.environ.get('GEE_JSON_KEY'):
+            cred_dict = json.loads(os.environ.get('GEE_JSON_KEY'))
+            cred = firebase_credentials.Certificate(cred_dict)
+        else:
+            cred = firebase_credentials.Certificate('karshizest-a7b3c3acdeee.json')
         firebase_admin.initialize_app(cred)
 except Exception as e:
     print(f"Firebase Init Warning: {e}")

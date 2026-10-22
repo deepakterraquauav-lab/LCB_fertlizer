@@ -644,7 +644,20 @@ function AppContent() {
           featureToUse = geojsonData;
         }
         if (featureToUse) {
+          const fileNameWithoutExt = file.name ? file.name.replace(/\.[^/.]+$/, "") : "";
+          if (!featureToUse.properties) {
+            featureToUse.properties = {};
+          }
+          if (!featureToUse.properties.name && fileNameWithoutExt) {
+            featureToUse.properties.name = fileNameWithoutExt;
+          }
           setDrawnAOI(featureToUse);
+          if (fileNameWithoutExt) {
+            setActiveFieldDetails(prev => ({
+              ...(prev || {}),
+              name: prev?.name || featureToUse.properties?.name || fileNameWithoutExt
+            }));
+          }
         }
         onSuccess({ name: file.name });
         Swal.fire({
@@ -927,6 +940,10 @@ function AppContent() {
         console.warn('Could not compute AOI centroid/area:', e);
       }
 
+      const rawFieldName = activeFieldDetails?.name || drawnAOI?.properties?.name || '';
+      const cleanFieldName = rawFieldName.replace(/[/\\?%*:|"<>]/g, '').trim();
+      const reportFileName = cleanFieldName ? `${cleanFieldName}-KrishiZest_Report.pdf` : 'KrishiZest_Report.pdf';
+
       const reportPayload = {
         aoi: drawnAOI,
         start_date: startDate,
@@ -938,7 +955,7 @@ function AppContent() {
         language: language || 'en',
         crop_type: activeFieldDetails?.cropType || activeFieldDetails?.type || '',
         crop_name: activeFieldDetails?.cropName || activeFieldDetails?.type || 'General Crop',
-        field_name: activeFieldDetails?.name || '',
+        field_name: cleanFieldName || activeFieldDetails?.name || '',
         village: activeFieldDetails?.village || '',
         district: activeFieldDetails?.district || '',
         state: activeFieldDetails?.state || '',
@@ -954,7 +971,7 @@ function AppContent() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `KrishiZest_Report_${startDate}_to_${endDate}.pdf`;
+      link.download = reportFileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

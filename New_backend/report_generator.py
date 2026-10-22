@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 import io
 import logging
 import os
@@ -5330,9 +5330,11 @@ def generate_report_response(payload: dict):
 
     doc.build(story, onFirstPage=_draw_page, onLaterPages=_draw_page)
     buffer.seek(0)
+    clean_field_name = "".join(c for c in field_name.strip() if c not in r'\/:*?"<>|').strip()
+    download_filename = f"{clean_field_name}-KrishiZest_Report.pdf" if clean_field_name else "KrishiZest_Report.pdf"
     return send_file(
         buffer,
         mimetype="application/pdf",
         as_attachment=True,
-        download_name=f"KrishiZest_Report_{start_date}_{end_date}.pdf",
+        download_name=download_filename,
     )

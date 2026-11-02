@@ -283,7 +283,7 @@ def update_field(field_id):
         if 'field_name' in data:
             field.name = data['field_name']
         if 'geometry' in data:
-            field.geometry = data['geometry']
+            field.geometry = sanitize_geometry_dict(data['geometry'])
         if 'area_hectares' in data:
             field.area_hectares = data['area_hectares']
             # Recompute acres whenever hectares is updated
@@ -390,7 +390,7 @@ def save_field():
         new_field = Field(
             user_id=user_id,
             name=name,
-            geometry=data.get('geometry'), 
+            geometry=sanitize_geometry_dict(data.get('geometry')), 
             area_hectares=area_hectares,
             area_acres=area_acres,
             field_type=data.get('type'),
@@ -484,6 +484,68 @@ def delete_field(field_id):
 def _chrome_probe():
     return ('', 204)
 
+def remove_z_coords(coords):
+    """Helper to remove Z coordinates (Altitude) from KML/GeoJSON coordinates."""
+    if isinstance(coords, (list, tuple)):
+        if len(coords) > 0 and isinstance(coords[0], (int, float)):
+            return list(coords[:2])  # Keep only [lon, lat]
+        return [remove_z_coords(c) for c in coords]
+    return coords
+
+def sanitize_geometry_dict(geom_dict):
+    """Clean a GeoJSON geometry dict by removing Z coordinates."""
+    if not isinstance(geom_dict, dict):
+        return geom_dict
+    cleaned = dict(geom_dict)
+    if 'coordinates' in cleaned:
+        cleaned['coordinates'] = remove_z_coords(cleaned['coordinates'])
+    return cleaned
+
+def parse_ee_geometry(aoi_data):
+    """
+    Safely extract and convert an AOI dictionary / GeoJSON into an ee.Geometry.
+    Handles:
+      - AOI as FeatureCollection, Feature, dict with 'geometry', or raw geometry
+      - 3D coordinates (strips altitude/Z element: [lon, lat, ele] -> [lon, lat])
+      - Polygon, MultiPolygon, Point, GeometryCollection
+    """
+    if aoi_data is None:
+        raise ValueError("AOI data is missing.")
+
+    if isinstance(aoi_data, ee.Geometry):
+        return aoi_data
+
+    geom = aoi_data
+    if isinstance(geom, dict):
+        if geom.get('type') == 'FeatureCollection' and geom.get('features'):
+            geom = geom['features'][0].get('geometry', {})
+        elif geom.get('type') == 'Feature':
+            geom = geom.get('geometry', {})
+        elif 'geometry' in geom and isinstance(geom['geometry'], dict):
+            geom = geom['geometry']
+
+    if not isinstance(geom, dict) or 'coordinates' not in geom:
+        if isinstance(aoi_data, (list, tuple)):
+            clean_coords = remove_z_coords(aoi_data)
+            return ee.Geometry.Polygon(clean_coords)
+        raise ValueError("Invalid geometry format in AOI.")
+
+    geom_type = geom.get('type', 'Polygon')
+    clean_coords = remove_z_coords(geom.get('coordinates', []))
+
+    if geom_type == 'Polygon':
+        return ee.Geometry.Polygon(clean_coords)
+    elif geom_type == 'MultiPolygon':
+        return ee.Geometry.MultiPolygon(clean_coords)
+    elif geom_type == 'Point':
+        return ee.Geometry.Point(clean_coords)
+    else:
+        cleaned_geom = dict(geom)
+        cleaned_geom['coordinates'] = clean_coords
+        return ee.Geometry(cleaned_geom)
+
+
+
 @app.route('/get_daily_data', methods=['POST'])
 def get_daily_data():
     """Enhanced daily data endpoint using Landsat & Sentinel-2"""
@@ -491,36 +553,7 @@ def get_daily_data():
         data = request.get_json()
         print(f"DEBUG: get_daily_data payload: {json.dumps(data, indent=2)}") # Log payload
         user_aoi = data['aoi']
-        
-        # Helper to remove Z coordinates (Altitude) from KML/GeoJSON
-        def remove_z(coords):
-            if isinstance(coords, list):
-                if len(coords) > 0 and isinstance(coords[0], (int, float)):
-                    return coords[:2] # Keep only [lon, lat]
-                return [remove_z(c) for c in coords]
-            return coords
-
-        # Handle GeometryCollection or MultiPolygon if needed
-        geom_type = user_aoi['geometry']['type']
-        raw_coords = user_aoi['geometry']['coordinates']
-        
-        # Clean coordinates
-        coords = remove_z(raw_coords)
-        
-        print(f"DEBUG: Geometry Type: {geom_type}")
-        
-        if geom_type == 'Polygon':
-            aoi = ee.Geometry.Polygon(coords)
-        elif geom_type == 'MultiPolygon':
-            aoi = ee.Geometry.MultiPolygon(coords)
-        elif geom_type == 'Point':
-            aoi = ee.Geometry.Point(coords)
-        else:
-            # Fallback for complex types with cleaned coords
-            # We need to reconstruct the geometry object
-            cleaned_geom = user_aoi['geometry'].copy()
-            cleaned_geom['coordinates'] = coords
-            aoi = ee.Geometry(cleaned_geom)
+        aoi = parse_ee_geometry(user_aoi)
 
         start_date = data['start_date']
         end_date = data['end_date']
@@ -612,8 +645,7 @@ def get_irrigation_calendar():
     try:
         data = request.get_json()
         user_aoi = data['aoi']
-        coords = user_aoi['geometry']['coordinates']
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = parse_ee_geometry(user_aoi)
 
         start_date = data['start_date']
         end_date = data['end_date']
@@ -757,8 +789,7 @@ def get_available_dates():
     """Get list of dates with available satellite imagery"""
     try:
         data = request.get_json()
-        coords = data['aoi']['geometry']['coordinates']
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = parse_ee_geometry(data['aoi'])
         start_date = data['start_date']
         end_date = data['end_date']
         
@@ -816,8 +847,7 @@ def get_gee_tile():
     """
     try:
         data = request.get_json()
-        coords = data['aoi']['geometry']['coordinates']
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = parse_ee_geometry(data['aoi'])
         layer_type = data.get("layer", "ndvi")
         
         # Check if specific date requested
@@ -1563,8 +1593,7 @@ def get_deep_spatial_stats():
     """
     try:
         data = request.get_json()
-        coords = data['aoi']['geometry']['coordinates']
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = parse_ee_geometry(data['aoi'])
         start_date = ee.Date(data.get('start_date'))
         end_date = ee.Date(data.get('end_date'))
         scale = data.get('scale', 20)
@@ -1757,8 +1786,7 @@ def get_vra_map():
     """Generate VRA map with Jenks classification for a specific parameter and date"""
     try:
         data = request.get_json()
-        coords = data['aoi']['geometry']['coordinates']
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = parse_ee_geometry(data['aoi'])
         parameter = data.get('parameter', 'ndvi')
         
         target_date = data.get('date')
@@ -1978,8 +2006,7 @@ def get_land_cover_analysis():
     try:
         data = request.get_json()
         user_aoi = data['aoi']
-        coords = user_aoi['geometry']['coordinates']
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = parse_ee_geometry(user_aoi)
         
         start_date = data['start_date']
         end_date = data['end_date']

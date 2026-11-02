@@ -4471,6 +4471,21 @@ def generate_report_response(payload: dict):
 
     crop_name   = payload.get("crop_name", "Crop").split("/")[0].strip()
     aoi         = payload.get("aoi")
+
+    # Sanitize AOI coordinates (strip altitude/Z from KML 3D coordinates)
+    def _strip_z(c):
+        if isinstance(c, (list, tuple)):
+            if len(c) > 0 and isinstance(c[0], (int, float)):
+                return list(c[:2])
+            return [_strip_z(x) for x in c]
+        return c
+
+    if isinstance(aoi, dict):
+        if "geometry" in aoi and isinstance(aoi["geometry"], dict) and "coordinates" in aoi["geometry"]:
+            aoi["geometry"]["coordinates"] = _strip_z(aoi["geometry"]["coordinates"])
+        elif "coordinates" in aoi:
+            aoi["coordinates"] = _strip_z(aoi["coordinates"])
+
     aoi_coords  = None
     center_lat  = payload.get("centroid_lat")
     center_lon  = payload.get("centroid_lon")

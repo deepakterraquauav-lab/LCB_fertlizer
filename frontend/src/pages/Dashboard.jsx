@@ -445,6 +445,25 @@ function Dashboard() {
 
                 // 3. Validate and Update State
                 if (geometry) {
+                    // Strip 3D altitude/Z coordinate so coordinates are strictly 2D [lon, lat]
+                    const stripZ = (coords) => {
+                        if (!coords) return coords;
+                        if (Array.isArray(coords)) {
+                            if (coords.length > 0 && typeof coords[0] === 'number') {
+                                return coords.slice(0, 2);
+                            }
+                            return coords.map(stripZ);
+                        }
+                        return coords;
+                    };
+
+                    if (geometry.coordinates) {
+                        geometry = {
+                            ...geometry,
+                            coordinates: stripZ(geometry.coordinates)
+                        };
+                    }
+
                     setPendingFieldData({ geometry });
 
                     // Auto-fill the name input with the file name (removing extension)

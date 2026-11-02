@@ -201,6 +201,26 @@ function AppContent() {
           if (field) {
             console.log('Loaded field:', field);
             let geometry = field.geometry;
+
+            // Sanitize coordinates to strictly 2D [lon, lat]
+            const stripZ = (coords) => {
+              if (!coords) return coords;
+              if (Array.isArray(coords)) {
+                if (coords.length > 0 && typeof coords[0] === 'number') {
+                  return coords.slice(0, 2);
+                }
+                return coords.map(stripZ);
+              }
+              return coords;
+            };
+
+            if (geometry && geometry.coordinates) {
+              geometry = {
+                ...geometry,
+                coordinates: stripZ(geometry.coordinates)
+              };
+            }
+
             const feature = {
               type: 'Feature',
               geometry: geometry,
